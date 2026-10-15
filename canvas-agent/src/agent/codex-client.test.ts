@@ -86,6 +86,22 @@ test("Skill 列表与启用配置使用 app-server 原生协议", async () => {
     assert.equal((await configuring).effectiveEnabled, false);
 });
 
+test("分页线程历史会持续读取 cursor 并合并所有 turns", async () => {
+    const writes: Array<Record<string, any>> = [];
+    const child = { stdin: { write: (line: string) => (writes.push(JSON.parse(line)), true) } };
+    const client = Reflect.construct(CodexAppClient, [child, () => undefined, emptyEventHistory]) as CodexAppClient;
+    const testClient = client as unknown as TestClient;
+
+    const reading = client.listThreadTurns("thread-1");
+    assert.deepEqual(writes[0], { id: 1, method: "thread/turns/list", params: { threadId: "thread-1", cursor: null, limit: 100, sortDirection: "asc", itemsView: "full" } });
+    testClient.handle({ id: 1, result: { data: [{ id: "turn-1", status: "completed" }], nextCursor: "next-page" } });
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.deepEqual(writes[1], { id: 2, method: "thread/turns/list", params: { threadId: "thread-1", cursor: "next-page", limit: 100, sortDirection: "asc", itemsView: "full" } });
+    testClient.handle({ id: 2, result: { data: [{ id: "turn-2", status: "completed" }], nextCursor: null } });
+
+    assert.deepEqual(await reading, [{ id: "turn-1", status: "completed" }, { id: "turn-2", status: "completed" }]);
+});
+
 test("并发强制刷新同一工作空间时只扫描一次 Skill", async () => {
     const writes: Array<Record<string, unknown>> = [];
     const child = { stdin: { write: (line: string) => (writes.push(JSON.parse(line)), true) } };

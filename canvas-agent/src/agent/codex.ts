@@ -430,6 +430,24 @@ export function assertDraftHasNoSensitiveValues(draft: AgentSkillDraft, privateV
 /** 读取线程历史，并显式标记 Codex 是否已经物化 turns。 */
 async function loadCodexHistory(emit: AgentEmit, threadId: string, cwd?: string) {
     try {
+        const app = await getCodexApp(emit);
+        const result = await app.readThread(threadId, false);
+        const metadata = field(result, "thread");
+        const turns = await app.listThreadTurns(threadId);
+        const thread = metadata && typeof metadata === "object" && !Array.isArray(metadata)
+            ? { ...(metadata as Record<string, unknown>), turns }
+            : { id: threadId, turns };
+        assertThreadWorkspace(thread, cwd);
+        return { thread, historyReady: true };
+    } catch (error) {
+        if (!isLegacyHistoryEndpointError(error)) throw error;
+        return await loadLegacyCodexHistory(emit, threadId, cwd);
+    }
+}
+
+/** 旧版 app-server 没有分页历史接口时保留兼容路径。 */
+async function loadLegacyCodexHistory(emit: AgentEmit, threadId: string, cwd?: string) {
+    try {
         return { thread: await loadCodexThread(emit, threadId, cwd, true), historyReady: true };
     } catch (error) {
         if (/not materialized yet.*includeTurns/i.test(errorMessage(error))) return { thread: await loadCodexThread(emit, threadId, cwd, false), historyReady: false };
@@ -443,6 +461,11 @@ async function loadCodexHistory(emit: AgentEmit, threadId: string, cwd?: string)
             throw historyError;
         }
     }
+}
+
+function isLegacyHistoryEndpointError(error: unknown) {
+    const text = errorMessage(error);
+    return /(?:method not found|unknown method|unsupported method|thread\/(?:turns|items)\/list.*(?:not supported|unknown)|(?:not supported|unknown).*thread\/(?:turns|items)\/list)/i.test(text);
 }
 
 /** 恢复线程并统一校验工作空间与进程内活动线程。 */

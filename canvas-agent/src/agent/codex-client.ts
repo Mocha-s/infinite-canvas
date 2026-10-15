@@ -164,6 +164,20 @@ export class CodexAppClient {
         return this.request("thread/read", { threadId, includeTurns });
     }
 
+    /** 读取分页线程的完整 turn 历史；新 app-server 不再支持 read(includeTurns=true)。 */
+    async listThreadTurns(threadId: string) {
+        const turns: JsonRecord[] = [];
+        let cursor: string | null = null;
+        do {
+            const result = await this.request("thread/turns/list", { threadId, cursor, limit: 100, sortDirection: "asc", itemsView: "full" });
+            const page = Array.isArray(field(result, "data")) ? field(result, "data") as JsonRecord[] : [];
+            turns.push(...page);
+            const nextCursor = field(result, "nextCursor");
+            cursor = typeof nextCursor === "string" && nextCursor ? nextCursor : null;
+        } while (cursor);
+        return turns;
+    }
+
     /** 归档指定 Codex 线程。 */
     archiveThread(threadId: string) {
         return this.request("thread/archive", { threadId });
