@@ -51,6 +51,8 @@ export type AiConfig = {
     background: string;
     count: string;
     canvasImageCount: string;
+    mediaUploadUrl: string;
+    mediaUploadToken: string;
 };
 
 export type WebdavSyncConfig = {
@@ -60,12 +62,13 @@ export type WebdavSyncConfig = {
     directory: string;
     lastSyncedAt: string;
 };
-export type ConfigTabKey = "channels" | "preferences" | "prompt-sources" | "webdav" | "local-storage";
+export type ConfigTabKey = "channels" | "preferences" | "prompt-sources" | "webdav" | "media-storage" | "local-storage";
 
 export const CONFIG_STORE_KEY = "infinite-canvas:ai_config_store";
 const CHANNEL_MODEL_SEPARATOR = "::";
 const OPENAI_BASE_URL = "https://api.openai.com";
 const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com";
+export const DEFAULT_MEDIA_UPLOAD_URL = "https://media.aigcdo.top/__upload/presign";
 
 export const defaultConfig: AiConfig = {
     channelMode: "local",
@@ -108,6 +111,8 @@ export const defaultConfig: AiConfig = {
     background: "",
     count: "1",
     canvasImageCount: "3",
+    mediaUploadUrl: DEFAULT_MEDIA_UPLOAD_URL,
+    mediaUploadToken: "",
 };
 
 export const defaultWebdavSyncConfig: WebdavSyncConfig = {
@@ -250,6 +255,8 @@ export const useConfigStore = create<ConfigStore>()(
                         videoGenerateAudio: config.videoGenerateAudio || "true",
                         videoWatermark: config.videoWatermark || "false",
                         canvasImageCount: config.canvasImageCount || "3",
+                        mediaUploadUrl: config.mediaUploadUrl || DEFAULT_MEDIA_UPLOAD_URL,
+                        mediaUploadToken: config.mediaUploadToken || "",
                     },
                 };
             },
@@ -334,7 +341,18 @@ export function resolveModelChannel(config: AiConfig, value: string) {
     const decoded = decodeChannelModel(value);
     const model = decoded?.model || value;
     const matched = decoded ? config.channels.find((channel) => channel.id === decoded.channelId) : config.channels.find((channel) => channel.models.some((item) => item.name === model));
-    return matched || config.channels[0] || createModelChannel({ id: "default", name: i18n.t("config.channels.defaultName"), baseUrl: config.baseUrl, apiKey: config.apiKey, apiFormat: config.apiFormat, models: config.models.map(modelOptionName).map((name) => ({ name, capability: guessCapability(name) })) });
+    return (
+        matched ||
+        config.channels[0] ||
+        createModelChannel({
+            id: "default",
+            name: i18n.t("config.channels.defaultName"),
+            baseUrl: config.baseUrl,
+            apiKey: config.apiKey,
+            apiFormat: config.apiFormat,
+            models: config.models.map(modelOptionName).map((name) => ({ name, capability: guessCapability(name) })),
+        })
+    );
 }
 
 export function resolveModelRequestConfig(config: AiConfig, value: string) {

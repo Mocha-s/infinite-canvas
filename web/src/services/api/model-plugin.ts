@@ -25,6 +25,8 @@ export type RunPluginArgs = {
     config: AiConfig;
     prompt?: string;
     images?: string[];
+    imageUrls?: string[];
+    videoUrls?: string[];
     messages?: unknown[];
     params?: Record<string, unknown>;
     signal?: AbortSignal;
@@ -132,6 +134,8 @@ export async function runModelPlugin<T = unknown>(args: RunPluginArgs): Promise<
         "sleep",
         "signal",
         "onDelta",
+        "imageUrls",
+        "videoUrls",
         `"use strict"; return (async () => {\n${args.script}\n})();`,
     ) as (...fnArgs: unknown[]) => Promise<T>;
     try {
@@ -151,6 +155,8 @@ export async function runModelPlugin<T = unknown>(args: RunPluginArgs): Promise<
             (ms: number) => sleep(ms, args.signal),
             args.signal,
             args.onDelta,
+            args.imageUrls || [],
+            args.videoUrls || [],
         );
     } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") throw error;
@@ -167,6 +173,8 @@ export function getPluginVariables(): PluginVariable[] {
     return [
         { name: "prompt", type: "string", desc: i18n.t("modelPlugin.variables.prompt"), capabilities: ["image", "video", "audio"] },
         { name: "images", type: "string[]", desc: i18n.t("modelPlugin.variables.images"), capabilities: ["image", "video"] },
+        { name: "imageUrls", type: "string[]", desc: i18n.t("modelPluginMedia.imageUrls"), capabilities: ["image", "video"] },
+        { name: "videoUrls", type: "string[]", desc: i18n.t("modelPluginMedia.videoUrls"), capabilities: ["video"] },
         { name: "messages", type: "{ role, content }[]", desc: i18n.t("modelPlugin.variables.messages"), capabilities: ["text"] },
         { name: "params", type: "object", desc: i18n.t("modelPlugin.variables.params") },
         { name: "model", type: "string", desc: i18n.t("modelPlugin.variables.model") },
@@ -191,10 +199,10 @@ export type PluginTemplate = { label: string; script: string };
 
 export function getPluginTemplates(): Record<ModelCapability, PluginTemplate[]> {
     return {
-    image: [
-        {
-            label: i18n.t("modelPlugin.templates.openai"),
-            script: `// ${i18n.t("modelPlugin.templates.imageOpenai")}
+        image: [
+            {
+                label: i18n.t("modelPlugin.templates.openai"),
+                script: `// ${i18n.t("modelPlugin.templates.imageOpenai")}
 // ${i18n.t("modelPlugin.templates.availableImage")}
 if (images.length === 0) {
   // ${i18n.t("modelPlugin.templates.textToImage")}
@@ -223,10 +231,10 @@ const edited = await request({
   data: form,
 });
 return (edited.data || []).map((item) => item.b64_json ? \`data:image/png;base64,\${item.b64_json}\` : item.url);`,
-        },
-        {
-            label: i18n.t("modelPlugin.templates.gemini"),
-            script: `// ${i18n.t("modelPlugin.templates.imageGemini")}
+            },
+            {
+                label: i18n.t("modelPlugin.templates.gemini"),
+                script: `// ${i18n.t("modelPlugin.templates.imageGemini")}
 // ${i18n.t("modelPlugin.templates.availableImageGemini")}
 const parts = [{ text: prompt }];
 for (const dataUrl of images) {
@@ -244,12 +252,12 @@ return (data.candidates || [])
   .map((p) => p.inlineData || p.inline_data)
   .filter(Boolean)
   .map((img) => \`data:\${img.mimeType || img.mime_type || "image/png"};base64,\${img.data}\`);`,
-        },
-    ],
-    video: [
-        {
-            label: i18n.t("modelPlugin.templates.openai"),
-            script: `// ${i18n.t("modelPlugin.templates.videoOpenai")}
+            },
+        ],
+        video: [
+            {
+                label: i18n.t("modelPlugin.templates.openai"),
+                script: `// ${i18n.t("modelPlugin.templates.videoOpenai")}
 const headers = { "Content-Type": "application/json", Authorization: \`Bearer \${apiKey}\` };
 const task = await request({
   method: "post",
@@ -262,10 +270,10 @@ return await poll(
   (state) => state.status === "completed" ? { url: state.video_url || state.url } : null,
   { intervalMs: 2500, timeoutMs: 300000 },
 );`,
-        },
-        {
-            label: i18n.t("modelPlugin.templates.gemini"),
-            script: `// ${i18n.t("modelPlugin.templates.videoGemini")}
+            },
+            {
+                label: i18n.t("modelPlugin.templates.gemini"),
+                script: `// ${i18n.t("modelPlugin.templates.videoGemini")}
 // ${i18n.t("modelPlugin.templates.availableVideoGemini")}
 const headers = { "Content-Type": "application/json", "x-goog-api-key": apiKey };
 const instance = { prompt };
@@ -287,12 +295,12 @@ return await poll(
   },
   { intervalMs: 5000, timeoutMs: 300000 },
 );`,
-        },
-    ],
-    audio: [
-        {
-            label: i18n.t("modelPlugin.templates.openai"),
-            script: `// ${i18n.t("modelPlugin.templates.audioOpenai")}
+            },
+        ],
+        audio: [
+            {
+                label: i18n.t("modelPlugin.templates.openai"),
+                script: `// ${i18n.t("modelPlugin.templates.audioOpenai")}
 return await request({
   method: "post",
   url: \`\${baseUrl}/v1/audio/speech\`,
@@ -300,10 +308,10 @@ return await request({
   responseType: "blob",
   data: { model, input: prompt, voice: params.voice, response_format: params.format, speed: Number(params.speed) },
 });`,
-        },
-        {
-            label: i18n.t("modelPlugin.templates.gemini"),
-            script: `// ${i18n.t("modelPlugin.templates.audioGemini")}
+            },
+            {
+                label: i18n.t("modelPlugin.templates.gemini"),
+                script: `// ${i18n.t("modelPlugin.templates.audioGemini")}
 // ${i18n.t("modelPlugin.templates.availableAudioGemini")}
 const data = await request({
   method: "post",
@@ -320,12 +328,12 @@ const data = await request({
 const audio = data.candidates?.[0]?.content?.parts?.map((p) => p.inlineData || p.inline_data).find(Boolean);
 if (!audio?.data) throw new Error(${JSON.stringify(i18n.t("modelPlugin.templates.geminiNoAudio"))});
 return { data: audio.data };`,
-        },
-    ],
-    text: [
-        {
-            label: i18n.t("modelPlugin.templates.openai"),
-            script: `// ${i18n.t("modelPlugin.templates.textOpenai")}
+            },
+        ],
+        text: [
+            {
+                label: i18n.t("modelPlugin.templates.openai"),
+                script: `// ${i18n.t("modelPlugin.templates.textOpenai")}
 const data = await request({
   method: "post",
   url: \`\${baseUrl}/v1/responses\`,
@@ -341,10 +349,10 @@ const text = data.output_text
   || "";
 onDelta(text);
 return text;`,
-        },
-        {
-            label: i18n.t("modelPlugin.templates.gemini"),
-            script: `// ${i18n.t("modelPlugin.templates.textGemini")}
+            },
+            {
+                label: i18n.t("modelPlugin.templates.gemini"),
+                script: `// ${i18n.t("modelPlugin.templates.textGemini")}
 // ${i18n.t("modelPlugin.templates.availableTextGemini")}
 const contents = messages
   .filter((m) => m.role !== "system")
@@ -358,8 +366,8 @@ const data = await request({
 const text = data.candidates?.[0]?.content?.parts?.map((p) => p.text || "").join("") || "";
 onDelta(text);
 return text;`,
-        },
-    ],
+            },
+        ],
     };
 }
 

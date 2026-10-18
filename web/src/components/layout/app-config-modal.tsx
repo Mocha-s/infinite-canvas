@@ -13,7 +13,18 @@ import { exportAppConfig, importAppConfig } from "@/services/config-file";
 import { syncAppDataToWebdav, type AppSyncDomainKey, type AppSyncProgressEvent } from "@/services/app-sync";
 import { testWebdavConnection, WEBDAV_MANIFEST_FILE_NAME } from "@/services/webdav-sync";
 import { audioFormatOptions, audioVoiceOptions, normalizeAudioSpeedValue } from "@/lib/audio-generation";
-import { createModelChannel, modelOptionsFromChannels, normalizeModelOptionValue, selectableModelsByCapability, useConfigStore, type AiConfig, type ApiCallFormat, type ConfigTabKey, type ModelCapability, type ModelChannel } from "@/stores/use-config-store";
+import {
+    createModelChannel,
+    modelOptionsFromChannels,
+    normalizeModelOptionValue,
+    selectableModelsByCapability,
+    useConfigStore,
+    type AiConfig,
+    type ApiCallFormat,
+    type ConfigTabKey,
+    type ModelCapability,
+    type ModelChannel,
+} from "@/stores/use-config-store";
 
 type ModelGroup = {
     capability: ModelCapability;
@@ -308,6 +319,31 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                                         {webdavSyncStatus ? <span className="text-xs text-stone-500">{syncStageLabel(webdavSyncStatus, t)}</span> : null}
                                     </div>
                                     {syncingWebdav || webdavSyncStatus ? <WebdavProgressGrid progress={webdavDomainProgress} t={t} /> : null}
+                                </section>
+                            </Form>
+                        ),
+                    },
+                    {
+                        key: "media-storage",
+                        label: t("config.tabs.mediaStorage"),
+                        children: (
+                            <Form layout="vertical" requiredMark={false}>
+                                <section className="rounded-lg border border-stone-200 p-3 dark:border-stone-800">
+                                    <div className="mb-3">
+                                        <div className="flex items-center gap-2 text-sm font-semibold">
+                                            <Cloud className="size-4" />
+                                            {t("config.mediaStorage.title")}
+                                        </div>
+                                        <div className="mt-1 text-xs text-stone-500">{t("config.mediaStorage.description")}</div>
+                                    </div>
+                                    <div className="grid gap-4 md:grid-cols-2">
+                                        <Form.Item label={t("config.mediaStorage.uploadUrl")} className="mb-0">
+                                            <Input value={config.mediaUploadUrl} placeholder="https://media.example.com/__upload/presign" onChange={(event) => updateConfig("mediaUploadUrl", event.target.value)} />
+                                        </Form.Item>
+                                        <Form.Item label={t("config.mediaStorage.uploadToken")} extra={t("config.mediaStorage.tokenHint")} className="mb-0">
+                                            <Input.Password value={config.mediaUploadToken} autoComplete="off" onChange={(event) => updateConfig("mediaUploadToken", event.target.value)} />
+                                        </Form.Item>
+                                    </div>
                                 </section>
                             </Form>
                         ),

@@ -40,6 +40,10 @@ export function referenceUrl(image: ReferenceImage) {
     return image.storageKey || image.url || (!image.dataUrl.startsWith("data:") ? image.dataUrl : undefined);
 }
 
+export function publicReferenceUrl(image: ReferenceImage) {
+    return image.url || (!image.dataUrl.startsWith("data:") && !image.dataUrl.startsWith("blob:") ? image.dataUrl : undefined);
+}
+
 export function buildImageGenerationMetadata(type: CanvasImageGenerationType, config: AiConfig, count: number, references: ReferenceImage[]): CanvasNodeMetadata {
     return {
         generationType: type,
