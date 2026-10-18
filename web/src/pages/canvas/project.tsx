@@ -1620,22 +1620,20 @@ function InfiniteCanvasPage() {
         [getCanvasCenter, t],
     );
 
-    const pasteSystemClipboard = useCallback(async () => {
-        if (!navigator.clipboard) return;
-
-        const items = await navigator.clipboard.read();
-        const imageItem = items.find((item) => item.types.some((type) => type.startsWith("image/")));
-        if (imageItem) {
-            const imageType = imageItem.types.find((type) => type.startsWith("image/"));
-            if (!imageType) return;
-            const blob = await imageItem.getType(imageType);
-            const file = new File([blob], "clipboard-image.png", { type: imageType });
+    const pasteClipboardData = useCallback(async (clipboardData: DataTransfer) => {
+        const imageFiles = Array.from(clipboardData.files).filter((file) => file.type.startsWith("image/"));
+        const fallbackImageFiles = Array.from(clipboardData.items)
+            .filter((item) => item.kind === "file" && item.type.startsWith("image/"))
+            .map((item) => item.getAsFile())
+            .filter((file): file is File => Boolean(file));
+        const file = imageFiles[0] || fallbackImageFiles[0];
+        if (file) {
             void createImageFileNode(file, getCanvasCenter());
             message.success(t("canvas.projectPage.clipboardImageAdded"));
             return;
         }
 
-        const text = (await navigator.clipboard.readText()).trim();
+        const text = clipboardData.getData("text/plain").trim();
         if (isPublicMediaUrl(text)) {
             if (await createVideoUrlNode(text, getCanvasCenter())) return;
             await createImageUrlNode(text, getCanvasCenter());
@@ -1643,6 +1641,21 @@ function InfiniteCanvasPage() {
         }
         if (createTextNodeFromClipboard(text)) message.success(t("canvas.projectPage.clipboardTextAdded"));
     }, [createImageFileNode, createImageUrlNode, createVideoUrlNode, createTextNodeFromClipboard, getCanvasCenter, message, t]);
+
+    useEffect(() => {
+        const handlePaste = (event: ClipboardEvent) => {
+            const target = event.target instanceof Element ? event.target : null;
+            if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLSelectElement || target?.closest("[contenteditable='true']")) return;
+            if (!event.clipboardData) return;
+            const hasImage = Array.from(event.clipboardData.items).some((item) => item.kind === "file" && item.type.startsWith("image/"));
+            const hasText = Boolean(event.clipboardData.getData("text/plain").trim());
+            if (!hasImage && !hasText) return;
+            event.preventDefault();
+            void pasteClipboardData(event.clipboardData);
+        };
+        window.addEventListener("paste", handlePaste);
+        return () => window.removeEventListener("paste", handlePaste);
+    }, [pasteClipboardData]);
 
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
@@ -1698,8 +1711,7 @@ function InfiniteCanvasPage() {
             }
 
             if (isModifierShortcut && !event.altKey && key === "v") {
-                event.preventDefault();
-                if (!pasteCopiedNodes()) void pasteSystemClipboard();
+                if (pasteCopiedNodes()) event.preventDefault();
                 return;
             }
 
@@ -1730,7 +1742,7 @@ function InfiniteCanvasPage() {
 
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [copySelectedNodes, deleteConnection, deleteNodes, groupSelection, pasteCopiedNodes, pasteSystemClipboard, redoCanvas, selectedConnectionId, setConnecting, undoCanvas, ungroupSelection]);
+    }, [copySelectedNodes, deleteConnection, deleteNodes, groupSelection, pasteCopiedNodes, redoCanvas, selectedConnectionId, setConnecting, undoCanvas, ungroupSelection]);
 
     const handleConnectStart = useCallback(
         (event: ReactMouseEvent, nodeId: string, handleType: "source" | "target") => {
