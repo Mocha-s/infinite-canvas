@@ -7,6 +7,7 @@ import { nanoid } from "nanoid";
 import { dataUrlToFile } from "@/lib/image-utils";
 import { buildImageReferencePromptText } from "@/lib/image-reference-prompt";
 import { imageToDataUrl } from "@/services/image-storage";
+import { isPublicMediaUrl, uploadPublicMedia } from "@/services/media-upload";
 import { imageSizePresets, inferMediaScale } from "@/lib/media-size";
 import type { ReferenceImage } from "@/types/image";
 
@@ -761,6 +762,7 @@ export async function requestEdit(config: AiConfig, prompt: string, references: 
         const requestSize = resolveRequestSize(config.size);
         const background = normalizeBackground(config.background);
         const refs = await Promise.all(references.map((image) => imageToDataUrl(image)));
+        const imageUrls = references.map((image) => image.url || (isPublicMediaUrl(image.dataUrl) ? image.dataUrl : "")).filter(Boolean);
         try {
             const result = await runModelPlugin({
                 capability: "image",
@@ -768,6 +770,7 @@ export async function requestEdit(config: AiConfig, prompt: string, references: 
                 config: requestConfig,
                 prompt: withSystemPrompt(requestConfig, requestPrompt),
                 images: refs,
+                imageUrls,
                 params: { size: requestSize, resolution: inferMediaScale(config.size), quality, count: n, ...(background ? { background } : {}) },
                 signal: options?.signal,
             });
@@ -787,6 +790,7 @@ export async function requestEdit(config: AiConfig, prompt: string, references: 
     const quality = normalizeQuality(config.quality);
     const requestSize = resolveRequestSize(config.size);
     const background = normalizeBackground(config.background);
+    if (usesJsonImageEdit(requestConfig)) return requestJsonImageEdit(requestConfig, requestPrompt, references, n, quality, requestSize, background, options);
     const formData = new FormData();
     formData.set("model", requestConfig.model);
     formData.set("prompt", withSystemPrompt(requestConfig, requestPrompt));
@@ -816,6 +820,37 @@ export async function requestEdit(config: AiConfig, prompt: string, references: 
     } catch (error) {
         throw new Error(readAxiosError(error, apiText("requestFailed")));
     }
+}
+
+async function requestJsonImageEdit(config: AiConfig, prompt: string, references: ReferenceImage[], count: number, quality?: string, size?: string, background?: string, options?: RequestOptions) {
+    const images = await Promise.all(references.map((reference) => ensurePublicReferenceUrl(reference, config)));
+    const response = await axios.post<ImageApiResponse>(
+        aiApiUrl(config, "/images/edits"),
+        {
+            model: config.model,
+            prompt: withSystemPrompt(config, prompt),
+            n: count,
+            images,
+            ...(quality ? { quality } : {}),
+            ...(size ? { size } : {}),
+            ...(background ? { background } : {}),
+            output_format: IMAGE_OUTPUT_FORMAT,
+        },
+        { headers: aiHeaders(config, "application/json"), signal: options?.signal, timeout: IMAGE_REQUEST_TIMEOUT_MS },
+    );
+    return parseImagePayload(response.data);
+}
+
+async function ensurePublicReferenceUrl(reference: ReferenceImage, config: AiConfig) {
+    const existingUrl = reference.url || (!reference.dataUrl.startsWith("data:") && !reference.dataUrl.startsWith("blob:") ? reference.dataUrl : "");
+    if (isPublicMediaUrl(existingUrl)) return existingUrl;
+    const dataUrl = await imageToDataUrl(reference);
+    const file = dataUrlToFile({ ...reference, dataUrl });
+    return (await uploadPublicMedia(file, config)).url;
+}
+
+function usesJsonImageEdit(config: AiConfig) {
+    return /gpt-image-2\.5|sunburst|flare/i.test(config.model);
 }
 
 export async function requestImageQuestion(config: AiConfig, messages: AiTextMessage[], onDelta: (text: string) => void, options?: RequestOptions) {
