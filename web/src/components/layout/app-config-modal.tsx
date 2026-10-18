@@ -346,6 +346,31 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                         ),
                     },
                     {
+                        key: "media-storage",
+                        label: t("config.tabs.mediaStorage"),
+                        children: (
+                            <Form layout="vertical" requiredMark={false}>
+                                <section className="rounded-lg border border-stone-200 p-3 dark:border-stone-800">
+                                    <div className="mb-3">
+                                        <div className="flex items-center gap-2 text-sm font-semibold">
+                                            <Cloud className="size-4" />
+                                            {t("config.mediaStorage.title")}
+                                        </div>
+                                        <div className="mt-1 text-xs text-stone-500">{t("config.mediaStorage.description")}</div>
+                                    </div>
+                                    <div className="grid gap-4 md:grid-cols-2">
+                                        <Form.Item label={t("config.mediaStorage.uploadUrl")} className="mb-0">
+                                            <Input value={config.mediaUploadUrl} placeholder="https://media.example.com/__upload/presign" onChange={(event) => updateConfig("mediaUploadUrl", event.target.value)} />
+                                        </Form.Item>
+                                        <Form.Item label={t("config.mediaStorage.uploadToken")} extra={t("config.mediaStorage.tokenHint")} className="mb-0">
+                                            <Input.Password value={config.mediaUploadToken} autoComplete="off" onChange={(event) => updateConfig("mediaUploadToken", event.target.value)} />
+                                        </Form.Item>
+                                    </div>
+                                </section>
+                            </Form>
+                        ),
+                    },
+                    {
                         key: "local-storage",
                         label: t("config.tabs.localStorage"),
                         children: <ConfigLocalStorage active={activeTab === "local-storage"} />,

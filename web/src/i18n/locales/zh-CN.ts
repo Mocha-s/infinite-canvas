@@ -40,7 +40,7 @@ export default {
     imageReferences: { label: "图片{{index}}", separator: "、", promptPrefix: "参考图片编号：{{labels}}。请按这些编号理解提示词中的图片引用。\n\n{{prompt}}" },
     modelPlugin: {
         pollTimeout: "插件轮询超时，请检查调用脚本或稍后重试", executionFailed: "模型调用脚本执行失败：{{message}}", noImages: "模型调用脚本没有返回图片",
-        variables: { prompt: "用户输入的提示词（已拼接系统提示词）", images: "参考图，dataURL 数组（改图 / 图生视频时有值）", videos: "参考视频 File 数组，可直接 form.append；画布或工作台接入的参考视频，无则为空数组", audios: "参考音频 File 数组，可直接 form.append；画布或工作台接入的参考音频，无则为空数组", messages: "对话消息数组，含系统消息", params: "生成参数：生图 {size,resolution,quality,count,background}、视频 {mode,seconds,size,resolution,ratio,generateAudio,watermark}（mode 为 frames 首尾帧或 reference 全能参考；超过 2 张图时为 reference）、音频 {voice,format,speed,instructions}", model: "模型名称（不含渠道前缀）", baseUrl: "渠道接口地址（原样，未拼 /v1）", apiKey: "渠道 API Key，请求头里自己带上", systemPrompt: "系统提示词原文", reasoningEffort: "文本推理强度；auto 表示由脚本决定是否传递", http: "便捷请求：http.post(path, body, {headers,params,responseType})、http.get(path, opts)、http.url(path)；默认带 Authorization: Bearer apiKey，可用 headers 覆盖；path 相对时按 baseUrl 拼 /v1", request: "原始请求 request({ method, url, headers, params, data, responseType })，不加任何默认头，鉴权头自己写；url 相对时按 baseUrl 拼接（不加 /v1）", poll: "轮询 poll(request, extract, {intervalMs,timeoutMs})，extract 返回真值即结束", sleep: "sleep(ms) 延时", signal: "取消信号，可透传给 http/request", onDelta: "onDelta(text) 推送流式文本（文本模型）" },
+        variables: { prompt: "用户输入的提示词（已拼接系统提示词）", images: "参考图，dataURL 数组（改图 / 图生视频时有值）", imageUrls: "参考图片的公网 URL 数组，没有公网地址时为空", videos: "参考视频 File 数组，可直接 form.append；画布或工作台接入的参考视频，无则为空数组", videoUrls: "参考视频的公网 URL 数组，没有公网地址时为空", audios: "参考音频 File 数组，可直接 form.append；画布或工作台接入的参考音频，无则为空数组", messages: "对话消息数组，含系统消息", params: "生成参数：生图 {size,resolution,quality,count,background}、视频 {mode,seconds,size,resolution,ratio,generateAudio,watermark}（mode 为 frames 首尾帧或 reference 全能参考；超过 2 张图时为 reference）、音频 {voice,format,speed,instructions}", model: "模型名称（不含渠道前缀）", baseUrl: "渠道接口地址（原样，未拼 /v1）", apiKey: "渠道 API Key，请求头里自己带上", systemPrompt: "系统提示词原文", reasoningEffort: "文本推理强度；auto 表示由脚本决定是否传递", http: "便捷请求：http.post(path, body, {headers,params,responseType})、http.get(path, opts)、http.url(path)；默认带 Authorization: Bearer apiKey，可用 headers 覆盖；path 相对时按 baseUrl 拼 /v1", request: "原始请求 request({ method, url, headers, params, data, responseType })，不加任何默认头，鉴权头自己写；url 相对时按 baseUrl 拼接（不加 /v1）", poll: "轮询 poll(request, extract, {intervalMs,timeoutMs})，extract 返回真值即结束", sleep: "sleep(ms) 延时", signal: "取消信号，可透传给 http/request", onDelta: "onDelta(text) 推送流式文本（文本模型）" },
         returns: { image: "文生图（images 为空）和图生图（images 有参考图）接口不同，脚本需自行区分；返回图片 URL 或 dataURL 字符串，也可返回它们的数组，或 [{ dataUrl }] / [{ url }] / [{ b64_json }]", video: "脚本内部完成轮询，返回 { url } 或 { blob } 或视频 URL 字符串", audio: "返回 Blob，或 base64 / dataURL 字符串，或 { b64_json } / { data } / { url }", text: "用 onDelta(text) 推送流式，最终 return 完整文本字符串" },
         templates: { openai: "OpenAI 规范", gemini: "Gemini 规范" },
         authoring: {
@@ -49,7 +49,7 @@ export default {
             returnTitle: "返回要求",
             variablesTitle: "可用变量",
             rulesTitle: "写法要求",
-            rules: "- 写成 async function，参数列表列出用到的变量；params 拆开写出 size、quality、count、seconds 等字段。函数上方用 /** */ 注释写清每个字段。\n- 用 request({ method, url, headers, params, data, responseType }) 发原始 HTTP 请求；需要自动带 Authorization: Bearer apiKey 时用 http.post / http.get。\n- 相对路径：request 按 baseUrl 拼接且不加 /v1；http 的相对 path 会按 baseUrl 拼 /v1。\n- 异步视频任务通常先创建再 poll(request, extract, { intervalMs, timeoutMs })，extract 返回真值即结束。\n- images 是参考图 dataURL 字符串数组。videos、audios 是参考视频/音频 File 数组，可直接 form.append(字段名, file)；没有参考时为空数组。\n- 使用 FormData 时不要手动设置 Content-Type，交给浏览器带 boundary。\n- 函数末尾 return 结果，并在文件最后 return await 函数名({ 同样的参数 })。只输出完整脚本，不要解释。",
+            rules: "- 写成 async function，参数列表列出用到的变量；params 拆开写出 size、quality、count、seconds 等字段。函数上方用 /** */ 注释写清每个字段。\n- 用 request({ method, url, headers, params, data, responseType }) 发原始 HTTP 请求；需要自动带 Authorization: Bearer apiKey 时用 http.post / http.get。\n- 相对路径：request 按 baseUrl 拼接且不加 /v1；http 的相对 path 会按 baseUrl 拼 /v1。\n- 异步视频任务通常先创建再 poll(request, extract, { intervalMs, timeoutMs })，extract 返回真值即结束。\n- images 是参考图 dataURL 字符串数组；imageUrls 和 videoUrls 是公网 URL 数组。videos、audios 是参考视频/音频 File 数组，可直接 form.append(字段名, file)；没有参考时为空数组。\n- 使用 FormData 时不要手动设置 Content-Type，交给浏览器带 boundary。\n- 函数末尾 return 结果，并在文件最后 return await 函数名({ 同样的参数 })。只输出完整脚本，不要解释。",
             examplesTitle: "完整示例（请按实际接口改写，不要原样照搬）",
             draftTitle: "用户当前草稿（请在此基础上修改；若为空则从零编写）",
             anyModel: "（当前选中的模型）",
@@ -380,6 +380,14 @@ export default {
             preferences: "偏好设置",
             promptSources: "提示词来源",
             localStorage: "本地存储",
+            mediaStorage: "媒体上传",
+        },
+        mediaStorage: {
+            title: "图片与视频公网上传",
+            description: "本地图片和视频会先保存在浏览器，再通过预签名地址上传到媒体服务；单个视频受 Cloudflare 代理上传上限约束。MinIO 根密钥不会保存到浏览器。",
+            uploadUrl: "预签名接口",
+            uploadToken: "上传 Token",
+            tokenHint: "Token 只保存在当前浏览器配置中，请勿分享配置文件。",
         },
         proxy: {
             title: "本地代理",
@@ -467,7 +475,7 @@ export default {
             },
             runtime: { requestFailed: "请求失败（{{status}}）", urlRequired: "JSON URL 不能为空", fetchFailed: "「{{name}}」拉取失败：{{error}}", noPrompts: "「{{name}}」未解析到有效提示词", invalidRoot: "「{{name}}」格式错误：根节点必须是数组" },
         },
-        fileSecurity: "JSON 文件包含 API Key 和 WebDAV 凭据，请妥善保管。",
+        fileSecurity: "JSON 文件包含 API Key、媒体上传 Token 和 WebDAV 凭据，请妥善保管。",
         import: "导入配置",
         export: "导出配置",
         imported: "配置与用户偏好已导入",

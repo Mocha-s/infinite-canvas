@@ -197,6 +197,7 @@ function readReferenceImage(node: CanvasNodeData): ReferenceImage | null {
         name: `${node.title || node.id}.png`,
         type: node.metadata.mimeType || "image/png",
         dataUrl: node.metadata.content,
+        url: node.metadata.publicUrl,
         storageKey: node.metadata.storageKey,
     };
 }
@@ -208,6 +209,7 @@ function readReferenceVideo(node: CanvasNodeData): ReferenceVideo | null {
         name: `${node.title || node.id}.mp4`,
         type: node.metadata.mimeType || "video/mp4",
         url: node.metadata.content,
+        publicUrl: node.metadata.publicUrl,
         storageKey: node.metadata.storageKey,
         bytes: node.metadata.bytes,
         width: node.metadata.naturalWidth,

@@ -56,6 +56,8 @@ export type AiConfig = {
     proxyUrl: string;
     nodeRegenerateBehavior: "new-node" | "overwrite";
     autoFocusOnSelect: boolean;
+    mediaUploadUrl: string;
+    mediaUploadToken: string;
 };
 
 export type WebdavSyncConfig = {
@@ -65,7 +67,7 @@ export type WebdavSyncConfig = {
     directory: string;
     lastSyncedAt: string;
 };
-export type ConfigTabKey = "channels" | "local-proxy" | "preferences" | "prompt-sources" | "webdav" | "local-storage";
+export type ConfigTabKey = "channels" | "local-proxy" | "preferences" | "prompt-sources" | "webdav" | "media-storage" | "local-storage";
 
 export type ChannelCredentialsImportResult = {
     status: "created" | "updated" | "missing-base-url" | "invalid-base-url";
@@ -78,6 +80,7 @@ const OPENAI_BASE_URL = "https://api.openai.com";
 const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com";
 export const LOCAL_PROXY_PACKAGE = "@basketikun/canvas-proxy";
 export const DEFAULT_LOCAL_PROXY_URL = "http://127.0.0.1:23210";
+export const DEFAULT_MEDIA_UPLOAD_URL = "https://media.aigcdo.top/__upload/presign";
 
 export const defaultConfig: AiConfig = {
     channelMode: "local",
@@ -125,6 +128,8 @@ export const defaultConfig: AiConfig = {
     proxyUrl: DEFAULT_LOCAL_PROXY_URL,
     nodeRegenerateBehavior: "new-node",
     autoFocusOnSelect: false,
+    mediaUploadUrl: DEFAULT_MEDIA_UPLOAD_URL,
+    mediaUploadToken: "",
 };
 
 export const defaultWebdavSyncConfig: WebdavSyncConfig = {
@@ -284,6 +289,8 @@ export const useConfigStore = create<ConfigStore>()(
                         proxyUrl: config.proxyUrl || DEFAULT_LOCAL_PROXY_URL,
                         nodeRegenerateBehavior: config.nodeRegenerateBehavior === "overwrite" ? "overwrite" : "new-node",
                         autoFocusOnSelect: Boolean(config.autoFocusOnSelect),
+                        mediaUploadUrl: config.mediaUploadUrl || DEFAULT_MEDIA_UPLOAD_URL,
+                        mediaUploadToken: config.mediaUploadToken || "",
                     },
                 };
             },

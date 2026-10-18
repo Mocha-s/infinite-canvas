@@ -8,8 +8,8 @@ import { getMediaBlob, resolveMediaUrl, uploadMediaFile, type UploadedFile } fro
 import { imageToDataUrl } from "@/services/image-storage";
 import { boolConfig, buildApiUrl, modelOptionName, resolveModelRequestConfig, resolveModelScript, withLocalProxy, type AiConfig } from "@/stores/use-config-store";
 import { runModelPlugin } from "./model-plugin";
-import type { ReferenceImage } from "@/types/image";
 import type { ReferenceAudio, ReferenceVideo } from "@/types/media";
+import type { ReferenceImage } from "@/types/image";
 
 type VideoResponse = { id: string; status?: string; error?: { message?: string }; url?: string; result_url?: string; video_url?: string; content?: { video_url?: string; url?: string } | null };
 type ApiVideoResponse = VideoResponse | { code?: number | string; data?: VideoResponse | null; msg?: string; message?: string; error?: { message?: string } };
@@ -93,9 +93,11 @@ export async function pollVideoGenerationTask(config: AiConfig, task: VideoGener
 async function createPluginVideoTask(config: AiConfig, model: string, script: string, prompt: string, references: ReferenceImage[], options?: VideoMediaOptions): Promise<VideoGenerationTask> {
     if (!config.baseUrl.trim()) throw new Error(apiText("baseUrlRequired"));
     if (!config.apiKey.trim()) throw new Error(apiText("apiKeyRequired"));
-    const refs = await Promise.all(references.map((image) => imageToDataUrl(image)));
+    const refs = await Promise.all(references.filter((image) => !image.url).map((image) => imageToDataUrl(image)));
+    const imageUrls = references.map((image) => image.url || (isPublicMediaUrl(image.dataUrl) ? image.dataUrl : "")).filter(Boolean);
     const videos = await Promise.all((options?.videos || []).map((video) => referenceMediaToFile(video, "ref.mp4", "invalidReferenceVideo", options)));
     const audios = await Promise.all((options?.audios || []).map((audio) => referenceMediaToFile(audio, "ref.mp3", "invalidReferenceAudio", options)));
+    const videoUrls = (options?.videos || []).map((video) => video.publicUrl || (isPublicMediaUrl(video.url) ? video.url : "")).filter(Boolean);
     const result = videoPluginResult(
         await runModelPlugin({
             capability: "video",
@@ -105,6 +107,8 @@ async function createPluginVideoTask(config: AiConfig, model: string, script: st
             images: refs,
             videos,
             audios,
+            imageUrls,
+            videoUrls,
             params: {
                 seconds: normalizeVideoSeconds(config.videoSeconds),
                 size: normalizeVideoSize(config.size, config.vquality),

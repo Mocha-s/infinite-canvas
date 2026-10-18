@@ -27,6 +27,8 @@ export type RunPluginArgs = {
     images?: string[];
     videos?: File[];
     audios?: File[];
+    imageUrls?: string[];
+    videoUrls?: string[];
     messages?: unknown[];
     params?: Record<string, unknown>;
     signal?: AbortSignal;
@@ -133,6 +135,8 @@ export async function runModelPlugin<T = unknown>(args: RunPluginArgs): Promise<
         "sleep",
         "signal",
         "onDelta",
+        "imageUrls",
+        "videoUrls",
         `"use strict"; return (async () => {\n${args.script}\n})();`,
     ) as (...fnArgs: unknown[]) => Promise<T>;
     try {
@@ -154,6 +158,8 @@ export async function runModelPlugin<T = unknown>(args: RunPluginArgs): Promise<
             (ms: number) => sleep(ms, args.signal),
             args.signal,
             args.onDelta,
+            args.imageUrls || [],
+            args.videoUrls || [],
         );
     } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") throw error;
@@ -170,7 +176,9 @@ export function getPluginVariables(): PluginVariable[] {
     return [
         { name: "prompt", type: "string", desc: i18n.t("modelPlugin.variables.prompt"), capabilities: ["image", "video", "audio"] },
         { name: "images", type: "string[]", desc: i18n.t("modelPlugin.variables.images"), capabilities: ["image", "video"] },
+        { name: "imageUrls", type: "string[]", desc: i18n.t("modelPlugin.variables.imageUrls"), capabilities: ["image", "video"] },
         { name: "videos", type: "File[]", desc: i18n.t("modelPlugin.variables.videos"), capabilities: ["video"] },
+        { name: "videoUrls", type: "string[]", desc: i18n.t("modelPlugin.variables.videoUrls"), capabilities: ["video"] },
         { name: "audios", type: "File[]", desc: i18n.t("modelPlugin.variables.audios"), capabilities: ["video"] },
         { name: "messages", type: "{ role, content }[]", desc: i18n.t("modelPlugin.variables.messages"), capabilities: ["text"] },
         { name: "params", type: "object", desc: i18n.t("modelPlugin.variables.params") },

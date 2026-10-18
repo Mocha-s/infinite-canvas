@@ -11,6 +11,7 @@ import { createVideoGenerationTask, isVideoTaskFailed, storeGeneratedVideo, wait
 import { defaultConfig, useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
 import { ensureImagePreview, uploadImage } from "@/services/image-storage";
 import { uploadMediaFile, type UploadedFile } from "@/services/file-storage";
+import { isPublicMediaUrl, uploadPublicMedia } from "@/services/media-upload";
 import { nanoid } from "nanoid";
 import { getDataUrlByteSize, readImageMeta } from "@/lib/image-utils";
 import { imageReferenceLabel } from "@/lib/image-reference-prompt";
@@ -1479,8 +1480,17 @@ function InfiniteCanvasPage() {
         };
     }, [finishNodeDrag, handleGlobalMouseMove, handleGlobalMouseUp, handleGlobalPointerMove]);
 
+    const uploadPublicMediaForCanvas = useCallback(async (blob: Blob) => {
+        try {
+            return await uploadPublicMedia(blob, effectiveConfig);
+        } catch (error) {
+            message.warning(t("mediaUpload.publicUploadFailed", { error: error instanceof Error ? error.message : "unknown error" }));
+            return null;
+        }
+    }, [effectiveConfig, message, t]);
+
     const createImageFileNode = useCallback(async (file: File, position: Position) => {
-        const image = await uploadImage(file);
+        const [image, publicMedia] = await Promise.all([uploadImage(file), uploadPublicMediaForCanvas(file)]);
         const size = fitNodeSize(image.width, image.height);
         const id = `image-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
         const newNode: CanvasNodeData = {
@@ -1490,17 +1500,45 @@ function InfiniteCanvasPage() {
             position: { x: position.x - size.width / 2, y: position.y - size.height / 2 },
             width: size.width,
             height: size.height,
-            metadata: imageMetadata(image),
+            metadata: { ...imageMetadata(image), ...(publicMedia ? { publicUrl: publicMedia.url } : {}) },
         };
 
         setNodes((prev) => [...prev, newNode]);
         setSelectedNodeIds(new Set([id]));
         setSelectedConnectionId(null);
         setDialogNodeId(id);
-    }, []);
+    }, [uploadPublicMediaForCanvas]);
+
+    const createImageUrlNode = useCallback(async (url: string, position: Position) => {
+        try {
+            const parsed = new URL(url);
+            const meta = await new Promise<{ width: number; height: number }>((resolve, reject) => {
+                const image = new Image();
+                image.onload = () => resolve({ width: image.naturalWidth || 1024, height: image.naturalHeight || 1024 });
+                image.onerror = () => reject(new Error("image load failed"));
+                image.src = parsed.toString();
+            });
+            const size = fitNodeSize(meta.width, meta.height);
+            const node: CanvasNodeData = {
+                id: `image-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+                type: CanvasNodeType.Image,
+                title: decodeURIComponent(parsed.pathname.split("/").pop() || "image"),
+                position: { x: position.x - size.width / 2, y: position.y - size.height / 2 },
+                width: size.width,
+                height: size.height,
+                metadata: { content: parsed.toString(), publicUrl: parsed.toString(), status: NODE_STATUS_SUCCESS, naturalWidth: meta.width, naturalHeight: meta.height, mimeType: "image/png" },
+            };
+            setNodes((prev) => [...prev, node]);
+            setSelectedNodeIds(new Set([node.id]));
+            setSelectedConnectionId(null);
+            setDialogNodeId(node.id);
+        } catch {
+            message.error(t("mediaUpload.invalidImageUrl"));
+        }
+    }, [message, t]);
 
     const createVideoFileNode = useCallback(async (file: File, position: Position) => {
-        const video = await uploadMediaFile(file, "video");
+        const [video, publicMedia] = await Promise.all([uploadMediaFile(file, "video"), uploadPublicMediaForCanvas(file)]);
         const size = fitNodeSize(video.width || 1280, video.height || 720, VIDEO_NODE_MAX_WIDTH, VIDEO_NODE_MAX_HEIGHT);
         const id = `video-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
         setNodes((prev) => [
@@ -1512,12 +1550,34 @@ function InfiniteCanvasPage() {
                 position: { x: position.x - size.width / 2, y: position.y - size.height / 2 },
                 width: size.width,
                 height: size.height,
-                metadata: videoMetadata(video),
+                metadata: { ...videoMetadata(video), ...(publicMedia ? { publicUrl: publicMedia.url } : {}) },
             },
         ]);
         setSelectedNodeIds(new Set([id]));
         setSelectedConnectionId(null);
         setDialogNodeId(id);
+    }, [uploadPublicMediaForCanvas]);
+
+    const createVideoUrlNode = useCallback(async (url: string, position: Position) => {
+        const parsed = new URL(url);
+        const extension = parsed.pathname.match(/\.(mp4|mov|webm|m4v)$/i)?.[1]?.toLowerCase();
+        if (!isPublicMediaUrl(parsed.toString()) || !extension) return false;
+        const size = NODE_DEFAULT_SIZE[CanvasNodeType.Video];
+        const mimeType = extension === "mov" ? "video/quicktime" : extension === "webm" ? "video/webm" : "video/mp4";
+        const node: CanvasNodeData = {
+            id: `video-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            type: CanvasNodeType.Video,
+            title: decodeURIComponent(parsed.pathname.split("/").pop() || "video"),
+            position: { x: position.x - size.width / 2, y: position.y - size.height / 2 },
+            width: size.width,
+            height: size.height,
+            metadata: { content: parsed.toString(), publicUrl: parsed.toString(), status: NODE_STATUS_SUCCESS, naturalWidth: 1280, naturalHeight: 720, mimeType },
+        };
+        setNodes((prev) => [...prev, node]);
+        setSelectedNodeIds(new Set([node.id]));
+        setSelectedConnectionId(null);
+        setDialogNodeId(node.id);
+        return true;
     }, []);
 
     const createAudioFileNode = useCallback(async (file: File, position: Position) => {
@@ -1575,9 +1635,14 @@ function InfiniteCanvasPage() {
             return;
         }
 
-        const text = await navigator.clipboard.readText();
+        const text = (await navigator.clipboard.readText()).trim();
+        if (isPublicMediaUrl(text)) {
+            if (await createVideoUrlNode(text, getCanvasCenter())) return;
+            await createImageUrlNode(text, getCanvasCenter());
+            return;
+        }
         if (createTextNodeFromClipboard(text)) message.success(t("canvas.projectPage.clipboardTextAdded"));
-    }, [createImageFileNode, createTextNodeFromClipboard, getCanvasCenter, message, t]);
+    }, [createImageFileNode, createImageUrlNode, createVideoUrlNode, createTextNodeFromClipboard, getCanvasCenter, message, t]);
 
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
@@ -2005,7 +2070,7 @@ function InfiniteCanvasPage() {
             const maskImage = await uploadImage(payload.maskDataUrl);
             const maskNodeId = nanoid();
             const childId = nanoid();
-            const source = { id: node.id, name: `${node.title || node.id}.png`, type: node.metadata.mimeType || "image/png", dataUrl: node.metadata.content, storageKey: node.metadata.storageKey };
+            const source = { id: node.id, name: `${node.title || node.id}.png`, type: node.metadata.mimeType || "image/png", dataUrl: node.metadata.content, url: node.metadata.publicUrl, storageKey: node.metadata.storageKey };
             const maskSource = { id: maskNodeId, name: "mask.png", type: maskImage.mimeType || "image/png", dataUrl: maskImage.url, storageKey: maskImage.storageKey };
             const references = [source, maskSource];
             const generationMetadata = buildImageGenerationMetadata("edit", generationConfig, 1, references);
@@ -2098,7 +2163,7 @@ function InfiniteCanvasPage() {
             const title = buildAngleLabel(params);
             const prompt = buildAnglePrompt(params);
             const generationMetadata = buildImageGenerationMetadata("edit", generationConfig, 1, [
-                { id: node.id, name: `${node.title || node.id}.png`, type: node.metadata.mimeType || "image/png", dataUrl: node.metadata.content, storageKey: node.metadata.storageKey },
+                { id: node.id, name: `${node.title || node.id}.png`, type: node.metadata.mimeType || "image/png", dataUrl: node.metadata.content, url: node.metadata.publicUrl, storageKey: node.metadata.storageKey },
             ]);
             setAngleNodeId(null);
             setRunningNodeId(childId);
@@ -2122,7 +2187,7 @@ function InfiniteCanvasPage() {
                 const image = await requestEdit(
                     generationConfig,
                     prompt,
-                    [{ id: node.id, name: `${node.title || node.id}.png`, type: node.metadata.mimeType || "image/png", dataUrl: node.metadata.content, storageKey: node.metadata.storageKey }],
+                    [{ id: node.id, name: `${node.title || node.id}.png`, type: node.metadata.mimeType || "image/png", dataUrl: node.metadata.content, url: node.metadata.publicUrl, storageKey: node.metadata.storageKey }],
                     { signal: controller.signal },
                 ).then((items) => items[0]);
                 const uploaded = await uploadImage(image.dataUrl, { signal: controller.signal });
@@ -2195,7 +2260,7 @@ function InfiniteCanvasPage() {
                     setSelectedNodeIds(new Set([target.nodeId]));
                     setSelectedConnectionId(null);
                 } else if (first.type.startsWith("video/")) {
-                    const video = await uploadMediaFile(first, "video");
+                    const [video, publicMedia] = await Promise.all([uploadMediaFile(first, "video"), uploadPublicMediaForCanvas(first)]);
                     const nextSize = fitNodeSize(video.width || 1280, video.height || 720, VIDEO_NODE_MAX_WIDTH, VIDEO_NODE_MAX_HEIGHT);
                     setNodes((prev) =>
                         prev.map((node) =>
@@ -2207,7 +2272,7 @@ function InfiniteCanvasPage() {
                                       position: { x: node.position.x + node.width / 2 - nextSize.width / 2, y: node.position.y + node.height / 2 - nextSize.height / 2 },
                                       width: nextSize.width,
                                       height: nextSize.height,
-                                      metadata: { ...node.metadata, ...videoMetadata(video), errorDetails: undefined },
+                                      metadata: { ...node.metadata, ...videoMetadata(video), ...(publicMedia ? { publicUrl: publicMedia.url } : {}), errorDetails: undefined },
                                   }
                                 : node,
                         ),
@@ -2215,7 +2280,7 @@ function InfiniteCanvasPage() {
                     setSelectedNodeIds(new Set([target.nodeId]));
                     setSelectedConnectionId(null);
                 } else {
-                    const image = await uploadImage(first);
+                    const [image, publicMedia] = await Promise.all([uploadImage(first), uploadPublicMediaForCanvas(first)]);
                     const s = fitNodeSize(image.width, image.height);
                     setNodes((prev) =>
                         prev.map((node) =>
@@ -2229,6 +2294,7 @@ function InfiniteCanvasPage() {
                                       metadata: {
                                           ...node.metadata,
                                           ...imageMetadata(image),
+                                          ...(publicMedia ? { publicUrl: publicMedia.url } : {}),
                                           errorDetails: undefined,
                                           freeResize: false,
                                           images: undefined,
@@ -2278,7 +2344,7 @@ function InfiniteCanvasPage() {
             uploadTargetRef.current = null;
             event.target.value = "";
         },
-        [createAudioFileNode, createImageFileNode, createVideoFileNode, screenToCanvas, size.height, size.width],
+        [createAudioFileNode, createImageFileNode, createVideoFileNode, screenToCanvas, size.height, size.width, uploadPublicMediaForCanvas],
     );
 
     const handleDrop = useCallback(
@@ -2397,7 +2463,7 @@ function InfiniteCanvasPage() {
                     const reuseImageNode = isImageNode && (overwriteExisting || isEmptyImageNode);
                     const sourceReference =
                         isImageNode && sourceNode?.metadata?.content && !overwriteExisting
-                            ? [{ id: sourceNode.id, name: `${sourceNode.title || sourceNode.id}.png`, type: sourceNode.metadata.mimeType || "image/png", dataUrl: sourceNode.metadata.content, storageKey: sourceNode.metadata.storageKey }]
+                            ? [{ id: sourceNode.id, name: `${sourceNode.title || sourceNode.id}.png`, type: sourceNode.metadata.mimeType || "image/png", dataUrl: sourceNode.metadata.content, url: sourceNode.metadata.publicUrl, storageKey: sourceNode.metadata.storageKey }]
                             : [];
                     const referenceImages = [...new Map([...sourceReference, ...generationContext.referenceImages].map((image) => [image.id, image])).values()];
                     const generationType = referenceImages.length ? ("edit" as const) : ("generation" as const);
