@@ -790,7 +790,13 @@ export async function requestEdit(config: AiConfig, prompt: string, references: 
     const quality = normalizeQuality(config.quality);
     const requestSize = resolveRequestSize(config.size);
     const background = normalizeBackground(config.background);
-    if (usesJsonImageEdit(requestConfig)) return requestJsonImageEdit(requestConfig, requestPrompt, references, n, quality, requestSize, background, options);
+    if (usesJsonImageEdit(requestConfig)) {
+        try {
+            return await requestJsonImageEdit(requestConfig, requestPrompt, references, n, quality, requestSize, background, options);
+        } catch (error) {
+            throw new Error(readAxiosError(error, apiText("requestFailed")));
+        }
+    }
     const formData = new FormData();
     formData.set("model", requestConfig.model);
     formData.set("prompt", withSystemPrompt(requestConfig, requestPrompt));
