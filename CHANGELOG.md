@@ -2,6 +2,7 @@
 
 ## Unreleased
 
++ [修复] Agent 支持新版 Codex CLI 的分页历史接口，旧版 app-server 自动回退兼容。
 + [修复] 兼容 gpt-image-2.5 Sunburst/Flare 图像编辑，将画布本地引用转换为公网 HTTPS 地址后通过 JSON `images` 参数提交。
 + [修复] 画布改用粘贴事件读取剪切板图片和地址，避免 Ctrl/Cmd+V 被异步剪切板权限拦截后无响应。
 + [新增] 画布本地图片和视频支持通过 MinIO 预签名接口上传公网地址，粘贴公网媒体地址时直接复用原地址。
