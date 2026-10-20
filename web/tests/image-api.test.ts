@@ -15,8 +15,11 @@ if (!originalStorage) {
 
 const { buildJsonImageReferences, hasReusablePublicReferenceUrl } = await import("../src/services/api/image");
 
-test("serializes JSON image edit references as URL strings", () => {
-    expect(buildJsonImageReferences(["https://media.example/one.png", "https://media.example/two.png"])).toEqual(["https://media.example/one.png", "https://media.example/two.png"]);
+test("serializes JSON image edit references as image_url objects", () => {
+    expect(buildJsonImageReferences(["https://media.example/one.png", "https://media.example/two.png"])).toEqual([
+        { image_url: "https://media.example/one.png" },
+        { image_url: "https://media.example/two.png" },
+    ]);
 });
 
 test("refreshes a stale public URL when a local image copy exists", () => {
