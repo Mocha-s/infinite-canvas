@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { Empty, Input, Modal, Pagination, Tag } from "antd";
+import { Empty, Input, Modal, Pagination, Tabs, Tag } from "antd";
 import { Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { cn } from "@/lib/utils";
-import { getImagePreviewRevision, subscribeImagePreviews } from "@/services/image-storage";
+import { getImagePreviewRevision, subscribeImagePreviews, uploadImage } from "@/services/image-storage";
+import { uploadMediaFile } from "@/services/file-storage";
+import { StagingMediaBrowser } from "@/components/staging-media-browser";
+import type { StagedMedia } from "@/services/media-staging";
 import { assetCoverUrl, useAssetStore, type Asset } from "@/stores/use-asset-store";
 
-export type InsertAssetPayload = { kind: "text"; content: string; title: string } | { kind: "image"; dataUrl: string; title: string; storageKey?: string } | { kind: "video"; url: string; title: string; storageKey?: string; width?: number; height?: number };
+export type InsertAssetPayload = { kind: "text"; content: string; title: string } | { kind: "image"; dataUrl: string; title: string; storageKey?: string; stagingUrl?: string; stagingExpiresAt?: string } | { kind: "video"; url: string; title: string; storageKey?: string; width?: number; height?: number; stagingUrl?: string; stagingExpiresAt?: string };
 
 type Props = {
     open: boolean;
@@ -18,9 +21,21 @@ type Props = {
 
 export function AssetPickerModal({ open, onInsert, onClose }: Props) {
     const { t } = useTranslation();
+    const insertStagedMedia = async (media: StagedMedia) => {
+        const response = await fetch(media.url);
+        if (!response.ok) throw new Error(t("mediaUpload.stagingDownloadFailed"));
+        const blob = await response.blob();
+        if (media.mimeType?.startsWith("video/")) {
+            const stored = await uploadMediaFile(blob, "video");
+            onInsert({ kind: "video", url: stored.url, storageKey: stored.storageKey, title: media.originalName || media.storageKey, width: stored.width, height: stored.height, stagingUrl: media.url, stagingExpiresAt: media.expiresAt });
+        } else {
+            const stored = await uploadImage(blob);
+            onInsert({ kind: "image", dataUrl: stored.url, storageKey: stored.storageKey, title: media.originalName || media.storageKey, stagingUrl: media.url, stagingExpiresAt: media.expiresAt });
+        }
+    };
     return (
         <Modal title={t("canvas.assetPicker.title")} open={open} onCancel={onClose} footer={null} width={860} destroyOnHidden styles={{ body: { padding: "0 24px 24px", minHeight: 480 } }}>
-            <MyAssetsTab onInsert={onInsert} />
+            <Tabs items={[{ key: "assets", label: t("canvas.assetPicker.myAssets"), children: <MyAssetsTab onInsert={onInsert} /> }, { key: "staging", label: t("mediaUpload.stagingLibrary"), children: <StagingMediaBrowser onSelect={(media) => void insertStagedMedia(media)} /> }]} />
         </Modal>
     );
 }

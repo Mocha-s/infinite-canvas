@@ -16,7 +16,18 @@ import { syncAppDataToWebdav, type AppSyncDomainKey, type AppSyncProgressEvent }
 import { testWebdavConnection, WEBDAV_MANIFEST_FILE_NAME } from "@/services/webdav-sync";
 import { audioFormatOptions, audioVoiceOptions, normalizeAudioSpeedValue } from "@/lib/audio-generation";
 import { computeMediaSize, inferMediaRatio, inferMediaScale, mediaScaleOptions, parseVideoResolution } from "@/lib/media-size";
-import { createModelChannel, modelOptionsFromChannels, normalizeModelOptionValue, selectableModelsByCapability, useConfigStore, type AiConfig, type ApiCallFormat, type ConfigTabKey, type ModelCapability, type ModelChannel } from "@/stores/use-config-store";
+import {
+    createModelChannel,
+    modelOptionsFromChannels,
+    normalizeModelOptionValue,
+    selectableModelsByCapability,
+    useConfigStore,
+    type AiConfig,
+    type ApiCallFormat,
+    type ConfigTabKey,
+    type ModelCapability,
+    type ModelChannel,
+} from "@/stores/use-config-store";
 
 type ModelGroup = {
     capability: ModelCapability;
@@ -365,6 +376,13 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                                         <Form.Item label={t("config.mediaStorage.uploadToken")} extra={t("config.mediaStorage.tokenHint")} className="mb-0">
                                             <Input.Password value={config.mediaUploadToken} autoComplete="off" onChange={(event) => updateConfig("mediaUploadToken", event.target.value)} />
                                         </Form.Item>
+                                    </div>
+                                    <div className="mt-4 flex items-center justify-between gap-4 border-t border-stone-200 pt-4 dark:border-stone-800">
+                                        <div>
+                                            <div className="text-sm font-medium">{t("config.mediaStorage.stagingTitle")}</div>
+                                            <div className="mt-1 text-xs text-stone-500">{t("config.mediaStorage.stagingDescription")}</div>
+                                        </div>
+                                        <Switch checked={config.stagingUploadEnabled} onChange={(checked) => updateConfig("stagingUploadEnabled", checked)} />
                                     </div>
                                 </section>
                             </Form>
