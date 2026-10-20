@@ -32,6 +32,8 @@ export type CanvasNodeImage = {
     content: string;
     storageKey?: string;
     publicUrl?: string;
+    stagingUrl?: string;
+    stagingExpiresAt?: string;
     naturalWidth: number;
     naturalHeight: number;
     bytes: number;
@@ -80,6 +82,8 @@ export type CanvasNodeMetadata = {
     primaryImageId?: string;
     storageKey?: string;
     publicUrl?: string;
+    stagingUrl?: string;
+    stagingExpiresAt?: string;
     mimeType?: string;
     bytes?: number;
     durationMs?: number;
@@ -118,6 +122,8 @@ export type CanvasAssistantImage = {
     id: string;
     dataUrl: string;
     storageKey?: string;
+    stagingUrl?: string;
+    stagingExpiresAt?: string;
     prompt: string;
 };
 

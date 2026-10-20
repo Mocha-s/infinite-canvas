@@ -8,6 +8,7 @@ import { useCopyText } from "@/hooks/use-copy-text";
 import { formatBytes, readFileAsDataUrl } from "@/lib/image-utils";
 import { getMediaBlob } from "@/services/file-storage";
 import { getImageBlob, getImagePreviewRevision, subscribeImagePreviews, uploadImage } from "@/services/image-storage";
+import { StagingMediaBrowser } from "@/components/staging-media-browser";
 import { cn } from "@/lib/utils";
 import { assetCoverUrl, useAssetStore, type Asset, type AssetKind, type ImageAsset } from "@/stores/use-asset-store";
 import { exportAssets, readAssetPackage } from "./asset-transfer";
@@ -40,6 +41,7 @@ export default function AssetsPage() {
     const removeAsset = useAssetStore((state) => state.removeAsset);
     const [keyword, setKeyword] = useState("");
     const [kindFilter, setKindFilter] = useState<AssetKind | "all">("all");
+    const [library, setLibrary] = useState<"assets" | "staging">("assets");
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
@@ -202,7 +204,7 @@ export default function AssetsPage() {
                         <p className="mt-3 text-sm text-stone-500 dark:text-stone-400">{t("assets.description")}</p>
                     </div>
 
-                    <div className="mx-auto mt-8 w-full max-w-2xl">
+                    {library === "assets" ? <div className="mx-auto mt-8 w-full max-w-2xl">
                         <Input.Search
                             className="w-full"
                             size="large"
@@ -219,9 +221,14 @@ export default function AssetsPage() {
                                 setKeyword(value);
                             }}
                         />
+                    </div> : null}
+
+                    <div className="mx-auto mt-5 flex max-w-6xl gap-2">
+                        <Tag.CheckableTag checked={library === "assets"} className={cn("prompt-filter-tag", library === "assets" && "is-active")} onChange={() => setLibrary("assets")}>{t("assets.library")}</Tag.CheckableTag>
+                        <Tag.CheckableTag checked={library === "staging"} className={cn("prompt-filter-tag", library === "staging" && "is-active")} onChange={() => setLibrary("staging")}>{t("mediaUpload.stagingLibrary")}</Tag.CheckableTag>
                     </div>
 
-                    <div className="mx-auto mt-6 grid max-w-6xl gap-3 text-left">
+                    {library === "assets" ? <div className="mx-auto mt-6 grid max-w-6xl gap-3 text-left">
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div className="grid gap-2 sm:grid-cols-[56px_minmax(0,1fr)] sm:items-center">
                                 <div className="text-xs font-medium text-stone-500 dark:text-stone-400">{t("assets.type")}</div>
@@ -265,10 +272,10 @@ export default function AssetsPage() {
                                 </button>
                             </div>
                         </div>
-                    </div>
+                    </div> : null}
                 </div>
 
-                <div className="mx-auto flex max-w-7xl flex-col gap-5">
+                {library === "staging" ? <div className="mx-auto max-w-7xl"><StagingMediaBrowser /></div> : <div className="mx-auto flex max-w-7xl flex-col gap-5">
                     <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                         {visibleAssets.map((asset) => (
                             <AssetCard key={asset.id} asset={asset} onOpen={() => setPreviewAsset(asset)} onEdit={() => openEdit(asset)} onCopy={copyAssetText} onDownload={downloadImage} onDelete={() => setDeletingAsset(asset)} />
@@ -290,7 +297,7 @@ export default function AssetsPage() {
                             }}
                         />
                     </div>
-                </div>
+                </div>}
             </main>
 
             <Modal title={editingAsset ? t("assets.edit") : t("assets.add")} open={isAssetOpen} width={980} onCancel={() => setIsAssetOpen(false)} onOk={() => void saveAsset()} okText={t("common.save")} cancelText={t("common.cancel")} destroyOnHidden>

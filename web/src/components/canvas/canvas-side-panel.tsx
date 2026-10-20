@@ -17,6 +17,8 @@ import { useAssetStore, type Asset, type AssetKind } from "@/stores/use-asset-st
 import { usePromptSourceStore } from "@/stores/use-prompt-source-store";
 import { CANVAS_SIDE_PANEL_MAX_WIDTH, CANVAS_SIDE_PANEL_MIN_WIDTH, CANVAS_SIDE_PANEL_MOTION_MS, useCanvasSidePanelStore } from "@/stores/use-canvas-side-panel-store";
 import { useThemeStore } from "@/stores/use-theme-store";
+import { StagingMediaBrowser } from "@/components/staging-media-browser";
+import type { StagedMedia } from "@/services/media-staging";
 import { CanvasNodeType, type CanvasNodeData } from "@/types/canvas";
 
 import type { InsertAssetPayload } from "./asset-picker-modal";
@@ -24,7 +26,7 @@ import type { InsertAssetPayload } from "./asset-picker-modal";
 const PANEL_MOTION_SECONDS = CANVAS_SIDE_PANEL_MOTION_MS / 1000;
 const PANEL_EASE = [0.22, 1, 0.36, 1] as const;
 
-type PanelTab = "canvas" | "assets" | "prompts";
+type PanelTab = "canvas" | "assets" | "staging" | "prompts";
 
 type Props = {
     nodes: CanvasNodeData[];
@@ -52,6 +54,7 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 export function CanvasSidePanel({ nodes, selectedNodeIds, onFocusNode, onPreviewNode, onHoverNode, onInsertAsset }: Props) {
+    const { message } = App.useApp();
     const { t } = useTranslation();
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const [tab, setTab] = useState<PanelTab>("canvas");
@@ -61,6 +64,23 @@ export function CanvasSidePanel({ nodes, selectedNodeIds, onFocusNode, onPreview
     const panelClosing = useCanvasSidePanelStore((state) => state.panelClosing);
     const setWidth = useCanvasSidePanelStore((state) => state.setWidth);
     const [resizing, setResizing] = useState(false);
+
+    const insertStagedMedia = async (media: StagedMedia) => {
+        try {
+            const response = await fetch(media.url);
+            if (!response.ok) throw new Error(t("mediaUpload.stagingDownloadFailed"));
+            const blob = await response.blob();
+            if (media.mimeType?.startsWith("video/")) {
+                const stored = await uploadMediaFile(blob, "video");
+                onInsertAsset({ kind: "video", url: stored.url, storageKey: stored.storageKey, title: media.originalName || media.storageKey, width: stored.width, height: stored.height, stagingUrl: media.url, stagingExpiresAt: media.expiresAt });
+            } else {
+                const stored = await uploadImage(blob);
+                onInsertAsset({ kind: "image", dataUrl: stored.url, storageKey: stored.storageKey, title: media.originalName || media.storageKey, stagingUrl: media.url, stagingExpiresAt: media.expiresAt });
+            }
+        } catch (error) {
+            message.error(error instanceof Error ? error.message : t("mediaUpload.stagingDownloadFailed"));
+        }
+    };
 
     const startResize = (event: ReactPointerEvent<HTMLButtonElement>) => {
         event.preventDefault();
@@ -103,6 +123,7 @@ export function CanvasSidePanel({ nodes, selectedNodeIds, onFocusNode, onPreview
                 <div className="flex items-center gap-5 px-4 pt-3.5">
                     <TabButton label={t("canvas.sidePanel.canvas")} active={tab === "canvas"} theme={theme} onClick={() => setTab("canvas")} />
                     <TabButton label={t("canvas.sidePanel.assets")} active={tab === "assets"} theme={theme} onClick={() => setTab("assets")} />
+                    <TabButton label={t("canvas.sidePanel.staging")} active={tab === "staging"} theme={theme} onClick={() => setTab("staging")} />
                     <TabButton label={t("canvas.sidePanel.prompts")} active={tab === "prompts"} theme={theme} onClick={() => setTab("prompts")} />
                 </div>
                 <div className="mt-2 min-h-0 flex-1 overflow-hidden">
@@ -110,6 +131,8 @@ export function CanvasSidePanel({ nodes, selectedNodeIds, onFocusNode, onPreview
                         <CanvasNodesTab nodes={nodes} selectedNodeIds={selectedNodeIds} onFocusNode={onFocusNode} onPreviewNode={onPreviewNode} onHoverNode={onHoverNode} theme={theme} />
                     ) : tab === "assets" ? (
                         <CanvasAssetsTab onInsert={onInsertAsset} theme={theme} />
+                    ) : tab === "staging" ? (
+                        <StagingMediaBrowser compact onSelect={(media) => void insertStagedMedia(media)} />
                     ) : (
                         <CanvasPromptsTab onInsert={onInsertAsset} theme={theme} />
                     )}

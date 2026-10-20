@@ -3,9 +3,52 @@ services:
     image: ghcr.io/basketikun/infinite-canvas:latest
     container_name: infinite-canvas
     ports:
-      - "3000:3000"
+      - "3200:3000"
     restart: unless-stopped
+    depends_on:
+      media-service:
+        condition: service_started
     # 统计分析（可选，默认关闭）。每家一个独立变量，填了谁就启用谁，可同时启用多家：
     # environment:
     #   ANALYTICS_GA4_ID: G-XXXXXXXXXX                    # Google Analytics 4 衡量 ID
     #   ANALYTICS_BAIDU_ID: xxxxxxxxxxxxxxxxxxxxxxxxxxxx   # 百度统计站点 ID
+    environment:
+      MEDIA_STAGING_TOKEN: ${MEDIA_STAGING_TOKEN:-}
+
+  media-minio:
+    image: minio/minio:latest
+    container_name: infinite-canvas-media-minio
+    command: server /data --console-address ":9001"
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MEDIA_MINIO_ROOT_USER:?Set MEDIA_MINIO_ROOT_USER in .env}
+      MINIO_ROOT_PASSWORD: ${MEDIA_MINIO_ROOT_PASSWORD:?Set MEDIA_MINIO_ROOT_PASSWORD in .env}
+    volumes:
+      - media_minio_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9000/minio/health/live || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  media-service:
+    build:
+      context: ./media-service
+    container_name: infinite-canvas-media-service
+    restart: unless-stopped
+    depends_on:
+      media-minio:
+        condition: service_healthy
+    environment:
+      PORT: 3001
+      MINIO_ENDPOINT: media-minio
+      MINIO_PORT: 9000
+      MINIO_USE_SSL: "false"
+      MINIO_ACCESS_KEY: ${MEDIA_MINIO_ROOT_USER:?Set MEDIA_MINIO_ROOT_USER in .env}
+      MINIO_SECRET_KEY: ${MEDIA_MINIO_ROOT_PASSWORD:?Set MEDIA_MINIO_ROOT_PASSWORD in .env}
+      MINIO_BUCKET: staging
+      MEDIA_STAGING_TOKEN: ${MEDIA_STAGING_TOKEN:-}
+      MEDIA_PUBLIC_BASE_URL: ""
+
+volumes:
+  media_minio_data:

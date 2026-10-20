@@ -2,7 +2,7 @@ import { defaultConfig, resolveModelForCapability, type AiConfig } from "@/store
 import i18n from "@/i18n";
 import { ensureImagePreview, resolveImageUrl, uploadImage } from "@/services/image-storage";
 import { resolveMediaUrl } from "@/services/file-storage";
-import { imageMetadata, publicReferenceUrl, referenceUrl } from "@/lib/canvas/canvas-node-factory";
+import { imageMetadata, referenceUrl } from "@/lib/canvas/canvas-node-factory";
 import type { NodeGenerationInput } from "@/components/canvas/canvas-node-generation";
 import type { CanvasNodeGenerationMode } from "@/components/canvas/canvas-node-prompt-panel";
 import type { CanvasImageAngleParams } from "@/components/canvas/canvas-node-angle-dialog";
@@ -24,7 +24,7 @@ export function audioExtension(mimeType?: string) {
 
 export function generationReferenceUrls(context: { referenceImages: ReferenceImage[]; referenceVideos: Array<{ storageKey?: string; url?: string; publicUrl?: string }>; referenceAudios?: Array<{ storageKey?: string; url?: string }> }) {
     return [
-        ...context.referenceImages.map(publicReferenceUrl).filter((url): url is string => Boolean(url)),
+        ...context.referenceImages.map(referenceUrl).filter((url): url is string => Boolean(url)),
         ...context.referenceVideos.map((video) => video.publicUrl || video.url).filter((url): url is string => Boolean(url)),
         ...(context.referenceAudios || []).map((audio) => audio.storageKey || audio.url).filter((url): url is string => Boolean(url)),
     ];

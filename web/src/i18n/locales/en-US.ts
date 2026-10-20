@@ -74,6 +74,7 @@ export default {
     },
     assets: {
         title: "My Assets",
+        library: "My asset library",
         description: "Save frequently used text and images, then find them quickly by type, title, or tag.",
         search: "Search titles, content, tags, or sources",
         type: "Type",
@@ -271,14 +272,14 @@ export default {
         },
         videoFrames: { first: "Capture first frame", last: "Capture last frame", current: "Capture current frame", firstTitle: "{{name}} first frame", lastTitle: "{{name}} last frame", currentTitle: "{{name}} current frame", captured: "Image node created", failed: "Could not capture this frame. Try again." },
         sidePanel: {
-            canvas: "Canvas", assets: "Assets", prompts: "Prompt Library", resize: "Resize left panel", elements: "Canvas elements", select: "Select", searchNodes: "Search nodes", focusNode: "Focus node", preview: "Large preview", viewList: "Switch to list", viewGrid: "Switch to thumbnails", noNodes: "No nodes on this canvas", clearAll: "Clear all", selected: "{{count}} selected", exporting: "Exporting selected elements…", exportName: "canvas-elements-{{count}}", exported: "Exported {{count}} elements", exportFailed: "Export failed. Try again.",
+            canvas: "Canvas", assets: "Assets", staging: "Staging", prompts: "Prompt Library", resize: "Resize left panel", elements: "Canvas elements", select: "Select", searchNodes: "Search nodes", focusNode: "Focus node", preview: "Large preview", viewList: "Switch to list", viewGrid: "Switch to thumbnails", noNodes: "No nodes on this canvas", clearAll: "Clear all", selected: "{{count}} selected", exporting: "Exporting selected elements…", exportName: "canvas-elements-{{count}}", exported: "Exported {{count}} elements", exportFailed: "Export failed. Try again.",
             addingAssets: "Adding assets…", addedAssets: "Added {{count}} assets", mediaOnly: "Only image and video files are supported", addFailed: "Failed to add assets. Try again.", searchAssets: "Search assets", add: "Add", noAssets: "No assets", inserted: "Insert into canvas", removeAssetTitle: "Remove this asset?", remove: "Remove", removeAsset: "Remove asset", assetRemoved: "Asset removed",
             searchPrompts: "Search prompts", noPrompts: "No prompts", promptCopied: "Prompt copied", copyFailed: "Copy failed", loadFailedRetry: "Load failed. Click to retry.", noMatchingPrompts: "No matching prompts", sourceEmpty: "No prompts from this source", viewDetails: "View details",
             filter: { image: "Image", video: "Video", text: "Text", audio: "Audio", config: "Configuration", group: "Group" },
         },
         assetPicker: { title: "Select assets", insert: "Insert", search: "Search assets", empty: "No assets" },
         imageTools: { copyPrompt: "Copy prompt", copyPromptTitle: "Copy the prompt used to generate this image", reversePrompt: "Reverse prompt", reversePromptTitle: "Create text and configuration nodes to infer the prompt", replace: "Replace image", locked: "Lock ratio", free: "Free ratio", lockTitle: "Switch to proportional scaling", freeTitle: "Switch to free resizing", mask: "Local edit", maskTitle: "Paint a mask and edit the selected area", crop: "Crop", cropTitle: "Crop into a new node", split: "Split", splitTitle: "Split the image by rows and columns", upscale: "Upscale", upscaleTitle: "Increase image resolution", superResolve: "Super resolution", superResolveTitle: "AI super resolution", angle: "Multi-angle", angleTitle: "Generate another angle", view: "View image", viewTitle: "View image details", more: "More", configure: "Configure quick tools", customize: "Customize toolbar", showLabels: "Show button labels", description: "Choose the quick tools shown in the image-node toolbar.", preview: "Node preview", imageNode: "Image node", quickTools: "Quick tools" },
-        nodeToolbar: { noPrompt: "No prompt to copy", infoTitle: "View node information", info: "Info", removeTitle: "Remove node", retryTitle: "Generate again", queryVideoTask: "Get task status", queryVideoTaskTitle: "Query video generation status by task ID", videoTaskId: "Task ID", saveAsset: "Save asset", downloadAudio: "Download audio", downloadVideo: "Download video", downloadImage: "Download image", editTextTitle: "Edit text", editText: "Edit text", decreaseFont: "Decrease font size", increaseFont: "Increase font size", zoomOut: "Smaller", zoomIn: "Larger", uploadImage: "Upload image", replaceVideo: "Replace video", uploadVideo: "Upload video", replaceAudio: "Replace audio", uploadAudio: "Upload audio", nodeInfo: "Node information", name: "Name", type: "Type", size: "Size", position: "Position", status: "Status", imageGroup: "Image group", imageSize: "Image size", group: "Group", groupTitle: "Wrap selected nodes in a group", ungroup: "Ungroup", ungroupTitle: "Remove grouping from selected nodes" },
+        nodeToolbar: { noPrompt: "No prompt to copy", infoTitle: "View node information", info: "Info", removeTitle: "Remove node", retryTitle: "Generate again", queryVideoTask: "Get task status", queryVideoTaskTitle: "Query video generation status by task ID", videoTaskId: "Task ID", saveAsset: "Save asset", downloadAudio: "Download audio", downloadVideo: "Download video", downloadImage: "Download image", editTextTitle: "Edit text", editText: "Edit text", decreaseFont: "Decrease font size", increaseFont: "Increase font size", zoomOut: "Smaller", zoomIn: "Larger", uploadImage: "Upload image", replaceVideo: "Replace video", uploadVideo: "Upload video", replaceAudio: "Replace audio", uploadAudio: "Upload audio", stageMedia: "Upload to internal staging", nodeInfo: "Node information", name: "Name", type: "Type", size: "Size", position: "Position", status: "Status", imageGroup: "Image group", imageSize: "Image size", group: "Group", groupTitle: "Wrap selected nodes in a group", ungroup: "Ungroup", ungroupTitle: "Remove grouping from selected nodes" },
         configNode: { title: "Generation config", image: "Image", text: "Text", video: "Video", audio: "Audio", prompt: "Prompt", references: "Reference images", videoReferences: "Reference videos", audioReferences: "Reference audio", items: "{{count}} items", images: "{{count}} images", compose: "Compose prompt", stop: "Stop", generate: "Generate" },
         projectPage: {
             stopTitle: "Stop generation?", stopDescription: "The current request will be interrupted. Completed results will be kept.", stop: "Stop", continue: "Continue generating", configConnection: "Configuration nodes cannot be connected to each other", notFound: "Current canvas not found", exporting: "Exporting current canvas…", exported: "Current canvas exported", clipboardText: "Clipboard text", clipboardImageAdded: "Added image from clipboard", clipboardTextAdded: "Added text from clipboard", noTextToSave: "No text to save", canvasText: "Canvas text", noVideoToSave: "No video to save", canvasVideo: "Canvas video", noImageToSave: "No image to save", canvasImage: "Canvas image", emptyReverse: "The image node is empty, so its prompt cannot be inferred", reverseTitle: "Reverse prompt", reverseConfigTitle: "Reverse prompt configuration", splitTitle: "{{name}} {{row}}-{{column}}", splitSuccess: "Split into {{count}} child nodes", maskResult: "Local edit result", maskFailed: "Local edit failed", generationFailed: "Generation failed", partialFailed: "Some images failed to generate", partialTextFailed: "Some text alternatives failed to generate", allFailed: "All images failed to generate", retryPromptMissing: "No prompt found for retry", referenceMissing: "The reference image is missing, so retry cannot continue", emptyTextImage: "The text node is empty, so an image cannot be generated", untitledCanvas: "Untitled canvas", superResolve: "AI super resolution", notImplemented: "Not implemented yet", imageDetails: "Image details", clearTitle: "Clear canvas?", clear: "Clear", clearDescription: "This will delete every node and connection on the current canvas.", reversePreset: "Infer a prompt suitable for AI image generation from the reference image.\n\nRequirements:\n1. Output only the prompt, with no explanation.\n2. Cover the subject, composition, style, lighting, color, materials, lens, and atmosphere.\n3. Write a complete prompt that can be used directly with an image model.", maskPrompt: "{{source}} is the original image. {{mask}} marks the area to edit with a translucent blue overlay on the original image. Only modify the area covered by the blue overlay, keep everything else identical to the original, output a full image with the same size as the original, and do not keep any blue overlay in the result. Edit request: {{prompt}}", maskNodeTitle: "Mask annotation", editTextPrompt: "Revise the text according to the instructions.\n\nOriginal:\n{{source}}\n\nInstructions:\n{{prompt}}"
@@ -388,6 +389,8 @@ export default {
             uploadUrl: "Presign endpoint",
             uploadToken: "Upload token",
             tokenHint: "The token is stored only in this browser's settings. Do not share exported settings.",
+            stagingTitle: "Automatically upload to internal staging",
+            stagingDescription: "Copy generated images, videos, and audio to this server's temporary MinIO. Files are kept for 7 days and are not a public AI URL source.",
         },
         proxy: {
             title: "Local proxy",
@@ -639,6 +642,21 @@ export default {
         },
         protocols: {
         },
+    },
+    mediaUpload: {
+        stagingUploaded: "Uploaded to internal staging",
+        stagingDisabled: "Enable internal staging in settings first",
+        stagingUploadFailed: "Failed to upload to internal staging",
+        stagingLocalCopyRequired: "Upload or generate a local media copy before staging it",
+        stagingLibrary: "Internal staging",
+        stagingRefresh: "Refresh list",
+        stagingEmpty: "No staged media",
+        stagingListFailed: "Failed to read the staging list",
+        stagingDownloadFailed: "Failed to download staged media",
+        stagingDelete: "Delete staged media",
+        stagingDeleteTitle: "Delete this staged media?",
+        stagingDeleted: "Staged media deleted",
+        stagingDeleteFailed: "Failed to delete staged media",
     },
     agent: {
         status: { failed: "Connection failed", connected: "Connected", connecting: "Connecting", disconnected: "Disconnected" },

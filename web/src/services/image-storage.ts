@@ -182,6 +182,10 @@ export async function ensureImagePreview(storageKey?: string) {
     return undefined;
 }
 
+export function preferLocalImageUrl(image: { dataUrl?: string; url?: string }, localUrl?: string) {
+    return localUrl || image.dataUrl || image.url || "";
+}
+
 // 缩略图生成排成一队，避免一次打开大量图片时同时解码。
 function queueImagePreview(storageKey: string) {
     previewQueue = previewQueue
@@ -223,7 +227,8 @@ export async function setImageBlob(storageKey: string, blob: Blob) {
 }
 
 export async function imageToDataUrl(image: { url?: string; dataUrl?: string; storageKey?: string }, options?: ImageReadOptions) {
-    const url = image.dataUrl || (await resolveImageUrl(image.storageKey, image.url || ""));
+    const localUrl = image.storageKey ? await resolveImageUrl(image.storageKey, "").catch(() => "") : "";
+    const url = preferLocalImageUrl(image, localUrl);
     if (!url || url.startsWith("data:")) return url;
     return blobToDataUrl(await fetchImageBlob(url, options));
 }

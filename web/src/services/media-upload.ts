@@ -1,5 +1,5 @@
 import i18n from "@/i18n";
-import type { AiConfig } from "@/stores/use-config-store";
+import { withLocalProxy, type AiConfig } from "@/stores/use-config-store";
 
 type MediaUploadConfig = Pick<AiConfig, "mediaUploadUrl" | "mediaUploadToken">;
 
@@ -16,7 +16,7 @@ export async function uploadPublicMedia(blob: Blob, config: MediaUploadConfig): 
     if (kind === "image" && blob.size > 30 * 1024 * 1024) throw new Error(i18n.t("mediaUpload.imageTooLarge"));
     if (kind === "video" && blob.size > 90 * 1024 * 1024) throw new Error(i18n.t("mediaUpload.videoTooLarge"));
 
-    const response = await fetch(endpoint, {
+    const response = await fetch(withLocalProxy(endpoint), {
         method: "POST",
         headers: {
             Accept: "application/json",
@@ -30,7 +30,7 @@ export async function uploadPublicMedia(blob: Blob, config: MediaUploadConfig): 
     const presign = (await response.json()) as PresignResponse;
     if (!presign.uploadUrl || !presign.url) throw new Error(i18n.t("mediaUpload.invalidResponse"));
     if (new URL(presign.uploadUrl).protocol !== "https:" || new URL(presign.url).protocol !== "https:") throw new Error(i18n.t("mediaUpload.httpsRequired"));
-    const upload = await fetch(presign.uploadUrl, { method: "PUT", headers: { "Content-Type": contentType }, body: blob });
+    const upload = await fetch(withLocalProxy(presign.uploadUrl), { method: "PUT", headers: { "Content-Type": contentType }, body: blob });
     if (!upload.ok) throw new Error(i18n.t("mediaUpload.uploadFailed", { status: upload.status }));
     return { url: presign.url, storageKey: presign.storageKey || "" };
 }

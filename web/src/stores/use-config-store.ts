@@ -58,6 +58,7 @@ export type AiConfig = {
     autoFocusOnSelect: boolean;
     mediaUploadUrl: string;
     mediaUploadToken: string;
+    stagingUploadEnabled: boolean;
 };
 
 export type WebdavSyncConfig = {
@@ -130,6 +131,7 @@ export const defaultConfig: AiConfig = {
     autoFocusOnSelect: false,
     mediaUploadUrl: DEFAULT_MEDIA_UPLOAD_URL,
     mediaUploadToken: "",
+    stagingUploadEnabled: false,
 };
 
 export const defaultWebdavSyncConfig: WebdavSyncConfig = {
@@ -291,6 +293,7 @@ export const useConfigStore = create<ConfigStore>()(
                         autoFocusOnSelect: Boolean(config.autoFocusOnSelect),
                         mediaUploadUrl: config.mediaUploadUrl || DEFAULT_MEDIA_UPLOAD_URL,
                         mediaUploadToken: config.mediaUploadToken || "",
+                        stagingUploadEnabled: Boolean(config.stagingUploadEnabled),
                     },
                 };
             },

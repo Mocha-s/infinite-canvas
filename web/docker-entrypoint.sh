@@ -11,12 +11,18 @@ sanitize_id() {
     printf '%s' "$1" | tr -cd 'A-Za-z0-9-'
 }
 
+sanitize_js_string() {
+    printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g; s/[[:cntrl:]]//g'
+}
+
 GA4_ID=$(sanitize_id "${ANALYTICS_GA4_ID:-}")
 BAIDU_ID=$(sanitize_id "${ANALYTICS_BAIDU_ID:-}")
+MEDIA_STAGING_TOKEN_VALUE=$(sanitize_js_string "${MEDIA_STAGING_TOKEN:-}")
 
 cat > /usr/share/nginx/html/config.js <<EOF
 window.__RUNTIME_CONFIG__ = {
   ANALYTICS_GA4_ID: "${GA4_ID}",
-  ANALYTICS_BAIDU_ID: "${BAIDU_ID}"
+  ANALYTICS_BAIDU_ID: "${BAIDU_ID}",
+  MEDIA_STAGING_TOKEN: "${MEDIA_STAGING_TOKEN_VALUE}"
 };
 EOF

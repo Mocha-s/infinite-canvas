@@ -836,7 +836,7 @@ async function requestJsonImageEdit(config: AiConfig, prompt: string, references
             model: config.model,
             prompt: withSystemPrompt(config, prompt),
             n: count,
-            images,
+            images: buildJsonImageReferences(images),
             ...(quality ? { quality } : {}),
             ...(size ? { size } : {}),
             ...(background ? { background } : {}),
@@ -847,9 +847,19 @@ async function requestJsonImageEdit(config: AiConfig, prompt: string, references
     return parseImagePayload(response.data);
 }
 
+export function buildJsonImageReferences(images: string[]) {
+    return images;
+}
+
+export function hasReusablePublicReferenceUrl(reference: Pick<ReferenceImage, "dataUrl" | "url" | "storageKey">) {
+    if (reference.storageKey) return false;
+    const existingUrl = reference.url || (!reference.dataUrl.startsWith("data:") && !reference.dataUrl.startsWith("blob:") ? reference.dataUrl : "");
+    return isPublicMediaUrl(existingUrl);
+}
+
 async function ensurePublicReferenceUrl(reference: ReferenceImage, config: AiConfig) {
     const existingUrl = reference.url || (!reference.dataUrl.startsWith("data:") && !reference.dataUrl.startsWith("blob:") ? reference.dataUrl : "");
-    if (isPublicMediaUrl(existingUrl)) return existingUrl;
+    if (hasReusablePublicReferenceUrl(reference)) return existingUrl;
     const dataUrl = await imageToDataUrl(reference);
     const file = dataUrlToFile({ ...reference, dataUrl });
     return (await uploadPublicMedia(file, config)).url;
