@@ -848,7 +848,7 @@ async function requestJsonImageEdit(config: AiConfig, prompt: string, references
 }
 
 export function buildJsonImageReferences(images: string[]) {
-    return images;
+    return images.map((image_url) => ({ image_url }));
 }
 
 export function hasReusablePublicReferenceUrl(reference: Pick<ReferenceImage, "dataUrl" | "url" | "storageKey">) {

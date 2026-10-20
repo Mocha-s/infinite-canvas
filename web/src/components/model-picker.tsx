@@ -1,10 +1,11 @@
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Cpu } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import i18n from "@/i18n";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { filterModelsByName } from "@/lib/model-search";
 import { modelOptionLabel, modelOptionName, selectableModelsByCapability, type AiConfig, type ModelCapability } from "@/stores/use-config-store";
 
 type ModelPickerProps = {
@@ -21,18 +22,30 @@ type ModelPickerProps = {
 export function ModelPicker({ config, value, onChange, capability, className, fullWidth = false, placeholder, onMissingConfig }: ModelPickerProps) {
     const { t } = useTranslation();
     const pickerId = useId();
+    const searchRef = useRef<HTMLInputElement>(null);
     const [open, setOpen] = useState(false);
+    const [query, setQuery] = useState("");
     const options = useMemo(() => Array.from(new Set([...(config.channelMode === "local" && !capability ? [value] : []), ...selectableModelsByCapability(config, capability)].filter((model): model is string => Boolean(model)))), [capability, config, value]);
+    const filteredOptions = useMemo(() => filterModelsByName(options, query), [options, query]);
     const current = value || "";
     const pickerPlaceholder = placeholder || t("settingsPanels.model.select");
 
     useEffect(() => {
         const closeOtherPicker = (event: Event) => {
-            if ((event as CustomEvent<string>).detail !== pickerId) setOpen(false);
+            if ((event as CustomEvent<string>).detail !== pickerId) {
+                setOpen(false);
+                setQuery("");
+            }
         };
         window.addEventListener("model-picker-open", closeOtherPicker);
         return () => window.removeEventListener("model-picker-open", closeOtherPicker);
     }, [pickerId]);
+
+    useEffect(() => {
+        if (!open) return;
+        const frame = requestAnimationFrame(() => searchRef.current?.focus());
+        return () => cancelAnimationFrame(frame);
+    }, [open]);
 
     return (
         <Select
@@ -41,9 +54,14 @@ export function ModelPicker({ config, value, onChange, capability, className, fu
             onOpenChange={(nextOpen) => {
                 if (nextOpen && !options.length && config.channelMode === "local") onMissingConfig?.();
                 if (nextOpen) window.dispatchEvent(new CustomEvent("model-picker-open", { detail: pickerId }));
+                else setQuery("");
                 setOpen(nextOpen);
             }}
-            onValueChange={onChange}
+            onValueChange={(model) => {
+                onChange(model);
+                setQuery("");
+                setOpen(false);
+            }}
         >
             <SelectTrigger
                 className={cn(
@@ -69,16 +87,30 @@ export function ModelPicker({ config, value, onChange, capability, className, fu
                 onPointerDown={(event) => event.stopPropagation()}
                 onMouseDown={(event) => event.stopPropagation()}
             >
-                {options.length ? (
-                    options.map((model) => (
+                <div className="sticky top-0 z-10 bg-popover p-1">
+                    <input
+                        ref={searchRef}
+                        type="search"
+                        value={query}
+                        onChange={(event) => setQuery(event.target.value)}
+                        onKeyDown={(event) => {
+                            if (event.key !== "Escape") event.stopPropagation();
+                        }}
+                        onMouseDown={(event) => event.stopPropagation()}
+                        onPointerDown={(event) => event.stopPropagation()}
+                        placeholder={t("settingsPanels.model.search")}
+                        aria-label={t("settingsPanels.model.search")}
+                        className="h-8 w-full rounded-md border border-input bg-transparent px-2.5 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring/40"
+                    />
+                </div>
+                {filteredOptions.length ? (
+                    filteredOptions.map((model) => (
                         <SelectItem key={model} value={model} textValue={modelOptionLabel(config, model)}>
                             <ModelLabel config={config} model={model} />
                         </SelectItem>
                     ))
                 ) : (
-                    <SelectItem value="__empty__" disabled>
-                        {emptyModelLabel(config, capability)}
-                    </SelectItem>
+                    <div className="px-2 py-3 text-center text-xs text-muted-foreground">{query.trim() ? t("settingsPanels.model.searchEmpty") : emptyModelLabel(config, capability)}</div>
                 )}
             </SelectContent>
         </Select>

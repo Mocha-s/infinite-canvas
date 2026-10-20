@@ -7,6 +7,8 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Model selection: opening a model picker should focus the search field; typing should filter model names case-insensitively without matching provider names, selecting a model should apply it, and closing/reopening the picker should clear the query. Keyboard Escape should still close the picker.
+- GPT Image 2.5 JSON edits: with one or more local canvas references, the request to `/v1/images/edits` should send `images: [{ image_url: "https://..." }]` and no longer fail with `images[].image_url is required`.
 - Seedance multi-reference video: with three large local reference images, the OpenAI-compatible request should send one `images` file per reference (not duplicate them into both `image[]` and `images`), stay within the upstream request-body limit, and create a task ID.
 - Video API network failure: when the provider request receives no HTTP response (`ERR_NETWORK`), the node should identify a video endpoint/network/CORS failure and suggest checking Base URL or enabling the local proxy; unreadable reference images should continue to show the separate reference-image error.
 - Internal media staging: with `MEDIA_MINIO_ROOT_USER`, `MEDIA_MINIO_ROOT_PASSWORD`, and optional `MEDIA_STAGING_TOKEN` configured, the Compose MinIO and media-service containers should start, the media settings toggle should enable automatic staging, the node toolbar should upload local image/video/audio copies to `/media-api`, and returned `/media/...` URLs should be available on the LAN. Staging objects should expire after 7 days, retain the browser `storageKey`, and never be sent to public AI providers as `imageUrls`.
