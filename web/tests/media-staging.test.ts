@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from "bun:test";
 
-const { listStagingMedia, uploadStagingMedia } = await import("../src/services/media-staging");
+const { deleteStagingMedia, listStagingMedia, uploadStagingMedia } = await import("../src/services/media-staging");
 
 const previousFetch = globalThis.fetch;
 
@@ -34,4 +34,13 @@ test("reads the temporary media library", async () => {
         return new Response(JSON.stringify({ items: [{ storageKey: "staging/one.png", url: "/media/staging/one.png", expiresAt: "2026-10-27T00:00:00.000Z", mimeType: "image/png" }] }), { status: 200 });
     }) as typeof fetch;
     await expect(listStagingMedia()).resolves.toHaveLength(1);
+});
+
+test("deletes a staging key through the path route", async () => {
+    globalThis.fetch = (async (input, init) => {
+        expect(String(input)).toBe("/media-api/staging/staging/with%20space.png");
+        expect(init?.method).toBe("DELETE");
+        return new Response(null, { status: 204 });
+    }) as typeof fetch;
+    await expect(deleteStagingMedia({ url: "/media/staging/with%20space.png", storageKey: "staging/with space.png", expiresAt: "" })).resolves.toBeUndefined();
 });

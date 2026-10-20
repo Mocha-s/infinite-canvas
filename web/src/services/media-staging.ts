@@ -38,7 +38,8 @@ export async function listStagingMedia(): Promise<StagedMedia[]> {
 }
 
 export async function deleteStagingMedia(media: StagedMedia) {
-    const response = await fetch(`/media-api/staging?key=${encodeURIComponent(media.storageKey)}`, {
+    const keyPath = media.storageKey.split("/").map(encodeURIComponent).join("/");
+    const response = await fetch(`/media-api/staging/${keyPath}`, {
         method: "DELETE",
         headers: MEDIA_STAGING_TOKEN ? { Authorization: `Bearer ${MEDIA_STAGING_TOKEN}` } : {},
     });
