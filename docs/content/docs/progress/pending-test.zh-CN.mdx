@@ -5,6 +5,8 @@ description: 当前版本已实现但仍需人工验证的变更项
 
 # 待测试
 
+- Seedance 多参考视频：使用三张较大的本地参考图时，OpenAI 兼容请求应每张只提交一次 `images` 文件，不再同时重复提交 `image[]` 和 `images`；请求体应保持在上游限制内并正常返回任务 ID。
+- 视频接口网络错误：渠道请求未收到 HTTP 响应（`ERR_NETWORK`）时，节点应明确提示检查 Base URL、网络/CORS 或开启本地代理；参考图读取失败仍应显示独立的参考图错误。
 - 内网媒体暂存：配置 `MEDIA_MINIO_ROOT_USER`、`MEDIA_MINIO_ROOT_PASSWORD` 和可选的 `MEDIA_STAGING_TOKEN` 后，Compose 中的 MinIO 与媒体服务应能启动；打开媒体配置中的自动暂存后，节点工具栏应能把本地图片、视频和音频上传到 `/media-api`，返回的 `/media/...` 地址可在局域网访问。暂存对象应保留 7 天后自动清理，节点继续保留浏览器 `storageKey`，且暂存地址不得作为 `imageUrls` 发送给公网 AI。
 - 暂存素材库：资产页和所有资产选择器都应出现「内网暂存」页签，支持搜索、图片/视频筛选、刷新、过期时间、预览/打开，以及插入前先复制回浏览器本地存储。
 - 画布本地参考图编辑：参考节点同时存在本地 `storageKey` 和远程媒体地址时，编辑请求应优先读取 IndexedDB 中的本地副本；即使远程媒体响应包含重复的 CORS 头，也不应再因 `Failed to fetch` 失败。

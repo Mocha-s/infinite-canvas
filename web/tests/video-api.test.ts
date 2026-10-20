@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import axios from "axios";
 
 Object.defineProperty(globalThis, "localStorage", {
     configurable: true,
@@ -10,7 +11,7 @@ Object.defineProperty(globalThis, "localStorage", {
 });
 
 const { defaultConfig } = await import("../src/stores/use-config-store");
-const { createVideoGenerationTask } = await import("../src/services/api/video");
+const { createVideoGenerationTask, readVideoRequestError, videoReferenceUploadFields } = await import("../src/services/api/video");
 
 function openAiVideoConfig() {
     const model = "channel::seedance2.0-900-3";
@@ -54,6 +55,17 @@ test("passes public video reference URLs to a model plugin without downloading t
     const task = await createVideoGenerationTask(config, "make a video", [{ id: "image-1", name: "reference.png", type: "image/png", dataUrl: "https://tmp.example/reference.png" }]);
 
     expect(task.provider).toBe("plugin");
+});
+
+test("explains that a video network failure may be caused by CORS or a blocked direct request", () => {
+    const error = new axios.AxiosError("Network Error", "ERR_NETWORK");
+    expect(readVideoRequestError(error, "视频任务创建失败")).toContain("网络/CORS");
+    expect(readVideoRequestError(error, "视频任务创建失败")).toContain("本地代理");
+});
+
+test("does not duplicate Seedance reference images in multipart video requests", () => {
+    expect(videoReferenceUploadFields("seedance2.0-900-3", "reference")).toEqual(["images"]);
+    expect(videoReferenceUploadFields("generic-video", "reference")).toEqual(["image[]", "images"]);
 });
 
 test("explains when an OpenAI video reference cannot be downloaded", async () => {

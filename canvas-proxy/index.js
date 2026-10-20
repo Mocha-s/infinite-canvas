@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 import { Readable } from "node:stream";
 
 const pkg = createRequire(import.meta.url)("./package.json");
@@ -92,7 +94,12 @@ async function forward(req, res, target) {
 export function createProxyServer() {
     return createServer((req, res) => {
         if (req.method === "OPTIONS") {
-            res.writeHead(204, CORS_HEADERS);
+            const requestedHeaders = req.headers["access-control-request-headers"];
+            res.writeHead(204, {
+                ...CORS_HEADERS,
+                ...(requestedHeaders ? { "access-control-allow-headers": requestedHeaders } : {}),
+                Vary: "Access-Control-Request-Headers",
+            });
             res.end();
             return;
         }
@@ -126,7 +133,9 @@ if (args.includes("--help") || args.includes("-h")) {
 const port = Number(readArg(args, "port", process.env.PORT || 23210));
 const host = readArg(args, "host", process.env.HOST || "127.0.0.1");
 
-createProxyServer().listen(port, host, () => {
-    console.log(`${pkg.name} v${pkg.version} listening on http://${host}:${port}`);
-    console.log(`Fill this address into Infinite Canvas → 配置 → 本地代理: http://${host}:${port}`);
-});
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+    createProxyServer().listen(port, host, () => {
+        console.log(`${pkg.name} v${pkg.version} listening on http://${host}:${port}`);
+        console.log(`Fill this address into Infinite Canvas → 配置 → 本地代理: http://${host}:${port}`);
+    });
+}

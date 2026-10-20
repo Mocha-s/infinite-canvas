@@ -178,10 +178,8 @@ async function createOpenAIVideoTask(config: AiConfig, model: string, prompt: st
             body.append("images", images[1], "last.png");
         }
     } else {
-        images.forEach((file, idx) => {
-            body.append("image[]", file, `ref_${idx + 1}.png`);
-            body.append("images", file, `ref_${idx + 1}.png`);
-        });
+        const fields = videoReferenceUploadFields(model, mode);
+        images.forEach((file, idx) => fields.forEach((field) => body.append(field, file, `ref_${idx + 1}.png`)));
     }
     videos.forEach((file) => body.append("video[]", file));
     audios.forEach((file) => body.append("audio[]", file));
@@ -190,8 +188,12 @@ async function createOpenAIVideoTask(config: AiConfig, model: string, prompt: st
         if (!created.id) throw new Error(apiText("noVideoTaskId"));
         return { id: created.id, provider: "openai", model };
     } catch (error) {
-        throw new Error(readAxiosError(error, apiText("videoTaskCreateFailed")));
+        throw new Error(readVideoRequestError(error, apiText("videoTaskCreateFailed")));
     }
+}
+
+export function videoReferenceUploadFields(model: string, mode: string) {
+    return mode === "reference" && /seedance/i.test(model) ? ["images"] : ["image[]", "images"];
 }
 
 async function pollOpenAIVideoTask(config: AiConfig, task: VideoGenerationTask, options?: RequestOptions): Promise<VideoGenerationTaskState> {
@@ -207,7 +209,7 @@ async function pollOpenAIVideoTask(config: AiConfig, task: VideoGenerationTask, 
         if (video.status === "failed" || video.status === "cancelled") return { status: "failed", error: readApiErrorMessage(video.error?.message) || apiText("videoGenerationFailed") };
         return { status: "pending" };
     } catch (error) {
-        throw new Error(readAxiosError(error, apiText("videoTaskQueryFailed")));
+        throw new Error(readVideoRequestError(error, apiText("videoTaskQueryFailed")));
     }
 }
 
@@ -259,7 +261,7 @@ async function createGeminiVideoTask(config: AiConfig, model: string, prompt: st
         if (!created.name) throw new Error(apiText("noVideoTaskId"));
         return { id: created.name, provider: "gemini", model };
     } catch (error) {
-        throw new Error(readAxiosError(error, apiText("videoTaskCreateFailed")));
+        throw new Error(readVideoRequestError(error, apiText("videoTaskCreateFailed")));
     }
 }
 
@@ -273,7 +275,7 @@ async function pollGeminiVideoTask(config: AiConfig, task: VideoGenerationTask, 
         const url = uri.includes("key=") ? uri : `${uri}${uri.includes("?") ? "&" : "?"}key=${config.apiKey}`;
         return { status: "completed", result: await videoResultFromUrl(url, options) };
     } catch (error) {
-        throw new Error(readAxiosError(error, apiText("videoTaskQueryFailed")));
+        throw new Error(readVideoRequestError(error, apiText("videoTaskQueryFailed")));
     }
 }
 
@@ -393,10 +395,14 @@ function readApiErrorMessage(value: unknown): string {
     return readApiErrorMessage(payload.msg) || readApiErrorMessage(payload.message) || readApiErrorMessage(errorMsg) || readApiErrorMessage(payload.detail) || "";
 }
 
-function readAxiosError(error: unknown, fallback: string) {
+export function readVideoRequestError(error: unknown, fallback: string) {
     if (axios.isCancel(error)) return apiText("requestCanceled");
     if (axios.isAxiosError<{ error?: { message?: string }; msg?: string; message?: string; code?: number | string }>(error)) {
-        if (!error.response && error.code === "ERR_NETWORK") return apiText("requestFailed");
+        if (!error.response && error.code === "ERR_NETWORK") {
+            return i18n.language.startsWith("zh")
+                ? `${fallback}：视频接口无 HTTP 响应，请检查 Base URL、网络/CORS，或开启本地代理。`
+                : `${fallback}: The video endpoint returned no HTTP response. Check the Base URL, network/CORS, or enable the local proxy.`;
+        }
         const responseData = error.response?.data;
         return readApiErrorMessage(responseData) || statusMessage(error.response?.status, fallback);
     }
