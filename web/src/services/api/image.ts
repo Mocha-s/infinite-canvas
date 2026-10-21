@@ -7,7 +7,7 @@ import { nanoid } from "nanoid";
 import { dataUrlToFile } from "@/lib/image-utils";
 import { buildImageReferencePromptText } from "@/lib/image-reference-prompt";
 import { imageToDataUrl } from "@/services/image-storage";
-import { isPublicMediaUrl, uploadPublicMedia } from "@/services/media-upload";
+import { isPublicMediaUrl } from "@/services/media-upload";
 import { imageSizePresets, inferMediaScale } from "@/lib/media-size";
 import type { ReferenceImage } from "@/types/image";
 
@@ -790,13 +790,6 @@ export async function requestEdit(config: AiConfig, prompt: string, references: 
     const quality = normalizeQuality(config.quality);
     const requestSize = resolveRequestSize(config.size);
     const background = normalizeBackground(config.background);
-    if (usesJsonImageEdit(requestConfig)) {
-        try {
-            return await requestJsonImageEdit(requestConfig, requestPrompt, references, n, quality, requestSize, background, options);
-        } catch (error) {
-            throw new Error(readAxiosError(error, apiText("requestFailed")));
-        }
-    }
     const formData = new FormData();
     formData.set("model", requestConfig.model);
     formData.set("prompt", withSystemPrompt(requestConfig, requestPrompt));
@@ -805,7 +798,9 @@ export async function requestEdit(config: AiConfig, prompt: string, references: 
     if (!/gpt-image/.test(requestConfig.model)) {
         formData.set("response_format", "b64_json");
     }
-    formData.set("output_format", IMAGE_OUTPUT_FORMAT);
+    if (shouldIncludeImageEditOutputFormat(requestConfig.model)) {
+        formData.set("output_format", IMAGE_OUTPUT_FORMAT);
+    }
     if (quality) {
         formData.set("quality", quality);
     }
@@ -816,7 +811,7 @@ export async function requestEdit(config: AiConfig, prompt: string, references: 
         formData.set("background", background);
     }
     const files = await Promise.all(references.map(async (image) => dataUrlToFile({ ...image, dataUrl: await imageToDataUrl(image) })));
-    const imageField = files.length > 1 ? "image[]" : "image";
+    const imageField = imageEditReferenceField(files.length);
     files.forEach((file) => formData.append(imageField, file));
 
     try {
@@ -828,45 +823,12 @@ export async function requestEdit(config: AiConfig, prompt: string, references: 
     }
 }
 
-async function requestJsonImageEdit(config: AiConfig, prompt: string, references: ReferenceImage[], count: number, quality?: string, size?: string, background?: string, options?: RequestOptions) {
-    const images = await Promise.all(references.map((reference) => ensurePublicReferenceUrl(reference, config)));
-    const response = await axios.post<ImageApiResponse>(
-        aiApiUrl(config, "/images/edits"),
-        {
-            model: config.model,
-            prompt: withSystemPrompt(config, prompt),
-            n: count,
-            images: buildJsonImageReferences(images),
-            ...(quality ? { quality } : {}),
-            ...(size ? { size } : {}),
-            ...(background ? { background } : {}),
-            output_format: IMAGE_OUTPUT_FORMAT,
-        },
-        { headers: aiHeaders(config, "application/json"), signal: options?.signal, timeout: IMAGE_REQUEST_TIMEOUT_MS },
-    );
-    return parseImagePayload(response.data);
+export function imageEditReferenceField(referenceCount: number) {
+    return referenceCount > 1 ? "image[]" : "image";
 }
 
-export function buildJsonImageReferences(images: string[]) {
-    return images.map((image_url) => ({ image_url }));
-}
-
-export function hasReusablePublicReferenceUrl(reference: Pick<ReferenceImage, "dataUrl" | "url" | "storageKey">) {
-    if (reference.storageKey) return false;
-    const existingUrl = reference.url || (!reference.dataUrl.startsWith("data:") && !reference.dataUrl.startsWith("blob:") ? reference.dataUrl : "");
-    return isPublicMediaUrl(existingUrl);
-}
-
-async function ensurePublicReferenceUrl(reference: ReferenceImage, config: AiConfig) {
-    const existingUrl = reference.url || (!reference.dataUrl.startsWith("data:") && !reference.dataUrl.startsWith("blob:") ? reference.dataUrl : "");
-    if (hasReusablePublicReferenceUrl(reference)) return existingUrl;
-    const dataUrl = await imageToDataUrl(reference);
-    const file = dataUrlToFile({ ...reference, dataUrl });
-    return (await uploadPublicMedia(file, config)).url;
-}
-
-function usesJsonImageEdit(config: AiConfig) {
-    return /gpt-image-2\.5|sunburst|flare/i.test(config.model);
+export function shouldIncludeImageEditOutputFormat(model: string) {
+    return !/gpt-image/i.test(model);
 }
 
 export async function requestImageQuestion(config: AiConfig, messages: AiTextMessage[], onDelta: (text: string) => void, options?: RequestOptions) {
