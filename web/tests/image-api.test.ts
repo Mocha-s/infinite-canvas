@@ -13,16 +13,15 @@ if (!originalStorage) {
     });
 }
 
-const { buildJsonImageReferences, hasReusablePublicReferenceUrl } = await import("../src/services/api/image");
+const { imageEditReferenceField, shouldIncludeImageEditOutputFormat } = await import("../src/services/api/image");
 
-test("serializes JSON image edit references as image_url objects", () => {
-    expect(buildJsonImageReferences(["https://media.example/one.png", "https://media.example/two.png"])).toEqual([
-        { image_url: "https://media.example/one.png" },
-        { image_url: "https://media.example/two.png" },
-    ]);
+test("uses the multipart image[] field for multiple edit references", () => {
+    expect(imageEditReferenceField(1)).toBe("image");
+    expect(imageEditReferenceField(3)).toBe("image[]");
 });
 
-test("refreshes a stale public URL when a local image copy exists", () => {
-    expect(hasReusablePublicReferenceUrl({ dataUrl: "", url: "https://media.example/image.png", storageKey: "image:local" })).toBe(false);
-    expect(hasReusablePublicReferenceUrl({ dataUrl: "", url: "https://media.example/image.png" })).toBe(true);
+test("omits output_format for GPT Image edit requests", () => {
+    expect(shouldIncludeImageEditOutputFormat("gpt-image-2.5")).toBe(false);
+    expect(shouldIncludeImageEditOutputFormat("gpt-image-2.5-sunburst-4k")).toBe(false);
+    expect(shouldIncludeImageEditOutputFormat("dall-e-2")).toBe(true);
 });
