@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { ReactNode } from "react";
-import { ChevronRight, Copy, Download, Group, Image as ImageIcon, Music2, Puzzle, RefreshCw, Star, Trash2, Video } from "lucide-react";
+import { ChevronRight, CloudUpload, Copy, Download, Group, Image as ImageIcon, Music2, Puzzle, RefreshCw, Star, Trash2, Video } from "lucide-react";
 
 import { canvasThemes } from "@/lib/canvas-theme";
 import { formatBytes } from "@/lib/image-utils";
@@ -53,6 +53,8 @@ type CanvasNodeProps = {
     onDownloadBatchImage?: (node: CanvasNodeData, imageId: string) => void;
     onRetryBatchImage?: (node: CanvasNodeData, imageId: string) => void;
     onDeleteBatchImage?: (nodeId: string, imageId: string) => void;
+    onDownloadMedia?: (nodeId: string) => void;
+    onStageMedia?: (nodeId: string) => void;
     onRetry?: (node: CanvasNodeData) => void;
     onViewImage?: (node: CanvasNodeData, imageId?: string) => void;
     onSelectReference?: (nodeId: string) => void;
@@ -118,6 +120,8 @@ export const CanvasNode = React.memo(function CanvasNode({
     onDownloadBatchImage,
     onRetryBatchImage,
     onDeleteBatchImage,
+    onDownloadMedia,
+    onStageMedia,
     onRetry,
     onViewImage,
     onSelectReference,
@@ -428,6 +432,33 @@ export const CanvasNode = React.memo(function CanvasNode({
                 </div>
 
                 {showImageInfo && hasImageContent ? <ImageInfoBar node={data} /> : null}
+
+                {!referenceSelectionState && (hasImageContent || hasVideoContent || hasAudioContent) ? (
+                    <div className="pointer-events-none absolute left-2.5 top-2.5 z-30 flex items-center gap-1 opacity-0 transition-opacity duration-150 group-hover/node:pointer-events-auto group-hover/node:opacity-100">
+                        <button
+                            type="button"
+                            className="grid size-8 place-items-center rounded-lg border shadow-[0_6px_18px_rgba(15,23,42,.16)] backdrop-blur-md transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+                            style={{ background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.toolbar.activeText }}
+                            title={t("common.download")}
+                            aria-label={t("common.download")}
+                            onMouseDown={(event) => event.stopPropagation()}
+                            onClick={(event) => { event.stopPropagation(); onDownloadMedia?.(data.id); }}
+                        >
+                            <Download className="size-3.5" />
+                        </button>
+                        <button
+                            type="button"
+                            className="grid size-8 place-items-center rounded-lg border shadow-[0_6px_18px_rgba(15,23,42,.16)] backdrop-blur-md transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+                            style={{ background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.toolbar.activeText }}
+                            title={t("canvas.nodeToolbar.stageMedia")}
+                            aria-label={t("canvas.nodeToolbar.stageMedia")}
+                            onMouseDown={(event) => event.stopPropagation()}
+                            onClick={(event) => { event.stopPropagation(); onStageMedia?.(data.id); }}
+                        >
+                            <CloudUpload className="size-3.5" />
+                        </button>
+                    </div>
+                ) : null}
 
                 {!isGroup && !hasImageContent && !hasVideoContent && !hasAudioContent ? <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12" style={{ background: `linear-gradient(to top, ${theme.canvas.background}66, transparent)` }} /> : null}
 
@@ -802,12 +833,6 @@ function ImageContent({
                 )}
             </div>
             {primaryImage?.status === "error" ? <BatchImageFailureActions placement="left" onRetry={() => onRetryBatchImage?.(primaryImage.id)} onDelete={() => onDeleteBatchImage?.(primaryImage.id)} /> : null}
-            {primaryImage?.content ? (
-                <button type="button" className="pointer-events-none absolute left-2.5 top-2.5 z-30 flex h-8 items-center gap-1 rounded-lg border px-2 text-[10px] font-medium opacity-0 shadow-[0_6px_18px_rgba(15,23,42,.16)] backdrop-blur-md transition hover:scale-[1.02] group-hover/node:pointer-events-auto group-hover/node:opacity-100" style={{ background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.toolbar.activeText }} title={t("common.download")} onClick={(event) => (event.stopPropagation(), onDownloadBatchImage?.(primaryImage.id))}>
-                    <Download className="size-3" />
-                    {t("common.download")}
-                </button>
-            ) : null}
             {isBatchRoot ? (
                 <button
                     type="button"
