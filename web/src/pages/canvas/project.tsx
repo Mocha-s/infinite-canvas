@@ -627,7 +627,7 @@ function InfiniteCanvasPage() {
 
     const keepNodeToolbar = useCallback(
         (nodeId: string) => {
-            if (nodeDraggingRef.current || nodeImageSettingsOpen) return;
+            if (nodeDraggingRef.current || nodeImageSettingsOpen || !selectedNodeIdsRef.current.has(nodeId)) return;
             setToolbarNodeId(nodeId);
         },
         [nodeImageSettingsOpen],
@@ -1926,6 +1926,16 @@ function InfiniteCanvasPage() {
         [message, stageStoredMedia, t],
     );
 
+    const handleNodeMediaDownload = useCallback((nodeId: string) => {
+        const node = nodesRef.current.find((item) => item.id === nodeId);
+        if (node) downloadNodeImage(node);
+    }, [downloadNodeImage]);
+
+    const handleNodeMediaStage = useCallback((nodeId: string) => {
+        const node = nodesRef.current.find((item) => item.id === nodeId);
+        if (node) void stageNodeMedia(node);
+    }, [stageNodeMedia]);
+
     const downloadBatchImage = useCallback((node: CanvasNodeData, imageId: string) => {
         const image = node.metadata?.images?.find((item) => item.id === imageId);
         if (!image?.content) return;
@@ -3178,7 +3188,6 @@ function InfiniteCanvasPage() {
     const handleNodeHoverStart = useCallback((nodeId: string) => {
         if (nodeDraggingRef.current) return;
         setHoveredNodeId(nodeId);
-        setToolbarNodeId(nodeId);
     }, []);
     const handleNodeHoverEnd = useCallback((nodeId: string) => {
         setHoveredNodeId((current) => (current === nodeId ? null : current));
@@ -3391,6 +3400,8 @@ function InfiniteCanvasPage() {
                             onSetBatchPrimary={setBatchPrimary}
                             onDuplicateBatchImage={duplicateBatchImage}
                             onDownloadBatchImage={downloadBatchImage}
+                            onDownloadMedia={handleNodeMediaDownload}
+                            onStageMedia={handleNodeMediaStage}
                             onRetryBatchImage={retryBatchImage}
                             onDeleteBatchImage={deleteBatchImage}
                             onRetry={handleNodeRetry}
@@ -3463,7 +3474,6 @@ function InfiniteCanvasPage() {
                     onGenerateImage={generateImageFromTextNode}
                     onUpload={(node) => handleUploadRequest(node.id)}
                     onDownload={downloadNodeImage}
-                    onStage={(node) => void stageNodeMedia(node)}
                     onSaveAsset={(node) => void saveNodeAsset(node)}
                     onMaskEdit={(node) => setMaskEditNodeId(node.id)}
                     onCrop={(node) => setCropNodeId(node.id)}
